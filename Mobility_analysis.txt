@@ -1,0 +1,36 @@
+
+
+
+
+keel bone fracture
+
+1) keel bone fracture ~ session var (including hen id)
+2) clustering of session
+3) keel bone fracture event ~ event var (modelling the differences, combination of differences)
+4) clustering of event
+
+egg - timestamp 11
+filipe.maximiano@vetsuisse.unibe.ch
+
+Christina, who collected the egg things, told me they took out eggs by 8 am every day. So, this time window would best fit as a one day period: meaning that number of transitions, duration spent per zone per day could all be correctly linked (hopefully ;-) to the correct egg date.
+For this particular summary table this would mean that one day is defined from 8 am day 0 until 7:59:59 the day after (= day 1) – just for timepoint 11. 
+
+Yes, John wanted the levels organized in order. So we changed it so that 1 would be the wintergarden and 5 the top tier. So the conversion went like this: 
+ 5 -> 1
+ 1 -> 2
+ 2 -> 3
+ 3 -> 4
+ 4 -> 5
+ 
+Concerning the chickens, if I recall correctly they are labeled from 1 to 120, correct? So, between 1 and 60 it's group A and from 61 to 120 it is group B (61 is 01B, 62 is 02 B, etc. until 120 is 60B). 
+
+-	Aufenthalt in Nestboxetage = Ei? 
+  Aufenthalt in Nestboxetage in der Nestbox am Vortag mit Ei matchen: wurde immer ein Ei gelegt, wenn in der Nestbox? Plus, wenn nicht in der Nestbox – wurde dann kein Ei gelegt, oder sonstwo (ein paar wenige Eier wurden in der Einstreu oder AKB gesammelt).
+-	Zwischenlegezeit und Calciummetabolismus
+ Dauer des Intervalls zwischen zwei Eiablagen (Lucy hat dafür ein Skript geschrieben): je kürzer das Intervall, desto „besser“ das Ei (Masse? Bruchfestigkeit?) würde auf „Knochen sind Priorität“ hindeuten – ODER je kürzer das Intervall, desto schwächer die Knochen weil die Eiqualität priorisiert wird?  in this case this would mean to get the in-between-2-egglaying events per bird of the last session: if this in-between-event thing is smaller, would egg quality be better? Or the shorter this interval the more severe the KBF score?
+-	„Aktivität“ und Eiqualität
+ je aktiver, desto weniger Energie für’s Ei? (Aktivität könnte hier halt alles sein: Anzahl Zonenwechsel, Dauer in der Einstreu, oder Entropie als Indikator für Stress?)
+
+
+
+
