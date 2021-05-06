@@ -21,12 +21,9 @@
 
 
 ------------------------------------------ Impact of cleaning on analysis
-5_1Cleaning&RawdataComparison-createVariables.ipynb: clean the unprocessed records and extract variables from the cleaned data. output file: 
+5_1Cleaning&RawdataComparison-createVariables.ipynb: clean the unprocessed records and extract variables from the cleaned data. Main output file: 'ML-method_daily_ALL_variables.csv'
 
-5_2Cleaning&RawdataComparison.ipynb: 
-
-5_3Cleaning&RawdataComparison_model.ipynb: 
-
+5_2Cleaning&RawdataComparison.ipynb: Using 'ML-method_daily_ALL_variables.csv', create visuals and compute measures to asess teh difference between unprocessed and cleaned dataset
 
 
 

@@ -170,6 +170,13 @@ stat, p = ShapiroTest(data)
 print('D’Agostino’s K^2 Test')
 stat, p = AgostinosK2Test(data)'''
 
+#from python: https://www.geeksforgeeks.org/python-find-most-frequent-element-in-a-list/
+def most_frequent(List):
+    occurence_count = Counter(List)
+    return occurence_count.most_common(1)[0][0]
+#small examples    
+print(most_frequent([2, 1, 2, 2, 1, 3]))
+
 ##########################################################################################################################################
 ################################################# chapter 0 - testing cleaning methods  ##################################################
 ##########################################################################################################################################
@@ -2951,10 +2958,9 @@ def dict_of_zones_appearances_with_transitionalZones(li):
 #li = [1,1,1,1,2,2,2,3,3,4,4,2,2,4,1,2] 
 #dict_of_zones_appearances_with_transitionalZones(li) #li_trans: [3, 3, 2, 3], output: {1: 2, 2: 4, 3: 4, 4: 2}
 
-
 def nbr_bouts_per_zone(li):
-    '''function to compute number of time a hen went into a zone'''
-    v = [i[0] for i in list(itertools.groupby(li, lambda x: x))]
+    '''function to compute number of time a hen went into a zone (i.e. if already in a zone, then it takes it into account, althoguht it is not an actual transition'''
+    v = [i[0] for i in itertools.groupby(li)]
     return dict(Counter(v))
 #small test
 #t = [1,1,1,1,2,2,2,3,3,3,4,4,2,2,2,2]
@@ -4159,8 +4165,10 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
            Max_duration_zones=pd.NamedAgg(column='Zone', aggfunc=lambda x: max_duration_zones(x)),
            dico_duration_stats=pd.NamedAgg(column='Zone', aggfunc=lambda x: dico_duration_stats(x, nbr_sec)),
            dico_zone_sortedduration=pd.NamedAgg(column='Zone', aggfunc=lambda x: dico_zone_sortedduration(x, nbr_sec)),
-           Total_number_transition=pd.NamedAgg(column='Zone', aggfunc=lambda x: nbr_transition(list((x)))),
-           nbr_stays=pd.NamedAgg(column='Zone', aggfunc=lambda x: nbr_bouts_per_zone(list((x)))),
+           Total_number_transition=pd.NamedAgg(column='Zone', aggfunc=lambda x: nbr_transition(list(x))),
+           nbr_stays=pd.NamedAgg(column='Zone', aggfunc=lambda x: nbr_bouts_per_zone(list(x))),
+           nbr_appearances= pd.NamedAgg(column='Zone', aggfunc=lambda x: \
+                                        dict_of_zones_appearances_with_transitionalZones([int(i.split('_Zone')[0]) for i in list(x)])), 
            distribution_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: DistributionEntropy(list(x))),
            #sample_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: sample_entropy([int(i.split('_Zone')[0]) for i in x], order=2,
            #                                                                           metric='chebyshev')),
@@ -4177,6 +4185,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     
     for z in li_Zone:
         df_daily['nbr_stays_'+z] = df_daily['nbr_stays'].map(lambda x: x.get(z,0))
+        df_daily['nbr_appearances_'+z] = df_daily['nbr_appearances'].map(lambda x: x.get(z,0))
     #df_daily.drop(['nbr_stay'], inplace=True, axis=1)
     #add maximum duration in zone4
     df_daily['Max_duration_zone_4'] = df_daily['dico_zone_sortedduration'].map(lambda x: max(x.get('4_Zone',[0])))

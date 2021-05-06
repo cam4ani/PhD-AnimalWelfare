@@ -8,7 +8,7 @@ from collections import defaultdict
 
 #id of run
 #this id should be changed each time you want to generate new results (i.e. be saving everyting without deleting what was already saved. Typically when you modify a function in the "utils.py" file and you would like to compare the results
-id_run = 'CleaningAnalysis_'
+id_run = 'correctlightschedule_'
 #other available: chapter0_final_
 
 #choose folder names where the initial data and the extracted data/information should be saved. 
