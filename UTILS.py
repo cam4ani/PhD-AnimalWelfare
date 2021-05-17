@@ -865,7 +865,7 @@ def zone_sequence(li, nbrZone=2):
 #print(zone_sequence([1,2,1,2,1,2,2,2,3,1,1],2)) #[3, 1, 1]
 
 def zone_sequence_sens2(li, nbrZone=2, li_t=None):
-    '''from a list it will output a list of the maximum number of last entries until reaching a maximum of nbrZOne different element'''
+    '''from a list it will output a list of the maximum number of last entries until reaching a maximum of nbrZone different element'''
     r = []
     t = []
     k = 0
@@ -2945,18 +2945,41 @@ def list_of_zones(li):
 #list_of_zones(li) #[1, 2, 3, 4, 2, 4, 1, 2]
 
 
-#same as"list_of_zones()" but with the transitional zones as well
+#accounting for all the transitional zones
 def dict_of_zones_appearances_with_transitionalZones(li):
+    '''must be numerical'''
     #remove the effect of duration
     li = [x[0] for x in itertools.groupby(li)]
     #add transitional zones (take only inbetween min and max zone) : note that the order does not mean anything
     li_trans = [list(range(min(li[i],li[i+1]),max(li[i],li[i+1])))[1:] for i in range(0,len(li)-1)]
     li_trans = [x for i in li_trans for x in i]
     #print(li_trans)
-    return dict(Counter(li+li_trans))   
+    li.extend(li_trans)
+    return dict(Counter(li))   
 #small example
 #li = [1,1,1,1,2,2,2,3,3,4,4,2,2,4,1,2] 
 #dict_of_zones_appearances_with_transitionalZones(li) #li_trans: [3, 3, 2, 3], output: {1: 2, 2: 4, 3: 4, 4: 2}
+
+
+def empirical_probabilites_of_goingup(li):
+    #turn into a sequence (i.e. excluding duration of stay in a zone)
+    li = [x[0] for x in itertools.groupby(li)]
+    dico_z_empproba = {}
+    #look only at inbetween zones
+    for z in [2,3,4]:
+        #True: means going up, False: mean going down
+        #we count if the zone appears in between two numbers but is not the last number (i.e. as in that case its going to z, not
+        #going from z!)
+        l = [(li[i+1]-li[i])>0 for i in range(0,len(li)-1) if ((z<=max(li[i],li[i+1]))&(z>=min(li[i],li[i+1]))&(z!=li[i+1]))]
+        #print(l)
+        dico_z_empproba[z] = np.nan
+        if len(l)>0:
+            dico_z_empproba[str(z)+'_Zone'] = sum(l)/len(l)*100
+    return dico_z_empproba
+#small example
+#li = [1,1,1,1,2,2,2,3,3,4,4,2,2,4,1,2]
+#empirical_probabilites_of_goingup(li) #{2: 0.6666666666666666, 3: 0.5, 4: 0.0}
+
 
 def nbr_bouts_per_zone(li):
     '''function to compute number of time a hen went into a zone (i.e. if already in a zone, then it takes it into account, althoguht it is not an actual transition'''
@@ -3988,7 +4011,6 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     #EntropyTimeComputation = config.EntropyTimeComputation
     #NbrData = config.NbrData
     
-    
     ############ small verifications
     #verify columns name of df_ts and select the column we need
     li_hen = [i for i in list(df_ts) if i.startswith('hen_')]
@@ -4167,8 +4189,10 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
            dico_zone_sortedduration=pd.NamedAgg(column='Zone', aggfunc=lambda x: dico_zone_sortedduration(x, nbr_sec)),
            Total_number_transition=pd.NamedAgg(column='Zone', aggfunc=lambda x: nbr_transition(list(x))),
            nbr_stays=pd.NamedAgg(column='Zone', aggfunc=lambda x: nbr_bouts_per_zone(list(x))),
-           nbr_appearances= pd.NamedAgg(column='Zone', aggfunc=lambda x: \
+           nbr_appearances=pd.NamedAgg(column='Zone', aggfunc=lambda x: \
                                         dict_of_zones_appearances_with_transitionalZones([int(i.split('_Zone')[0]) for i in list(x)])), 
+           empproba=pd.NamedAgg(column='Zone', aggfunc=lambda x: \
+                                empirical_probabilites_of_goingup([int(i.split('_Zone')[0]) for i in list(x)])),
            distribution_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: DistributionEntropy(list(x))),
            #sample_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: sample_entropy([int(i.split('_Zone')[0]) for i in x], order=2,
            #                                                                           metric='chebyshev')),
@@ -4182,11 +4206,12 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
            ).reset_index()
 
     df_daily = pd.merge(df_daily, df_, how='outer', on=['HenID','level'])
-    
+    #retrieve info per zone
     for z in li_Zone:
         df_daily['nbr_stays_'+z] = df_daily['nbr_stays'].map(lambda x: x.get(z,0))
         df_daily['nbr_appearances_'+z] = df_daily['nbr_appearances'].map(lambda x: x.get(z,0))
-    #df_daily.drop(['nbr_stay'], inplace=True, axis=1)
+        df_daily['empproba_'+z] = df_daily['empproba'].map(lambda x: x.get(z,np.nan))
+    df_daily.drop(['nbr_stay','empproba','nbr_appearances'], inplace=True, axis=1)
     #add maximum duration in zone4
     df_daily['Max_duration_zone_4'] = df_daily['dico_zone_sortedduration'].map(lambda x: max(x.get('4_Zone',[0])))
     

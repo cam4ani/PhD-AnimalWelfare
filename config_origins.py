@@ -30,6 +30,9 @@ path_performance = os.path.join(r'G:\VPHI\Welfare\2- Research Projects\OFHE2.Ori
 path_extracted_data_daily_check = os.path.join(path_extracted_data, 'DailyVerifications') #not linked to the id_run as its more general
 path_extracted_data = os.path.join(path_extracted_data, id_run)
 
+#add other usefulle directories
+path_extracted_data_SNA = os.path.join(path_extracted_data, 'SNA')
+
 #defines the color palette
 #https://matplotlib.org/stable/gallery/color/named_colors.html
 #https://matplotlib.org/3.1.1/tutorials/colors/colors.html
