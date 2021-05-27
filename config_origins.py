@@ -29,6 +29,7 @@ path_performance = os.path.join(r'G:\VPHI\Welfare\2- Research Projects\OFHE2.Ori
 #add id_run for readibility
 path_extracted_data_daily_check = os.path.join(path_extracted_data, 'DailyVerifications') #not linked to the id_run as its more general
 path_extracted_data = os.path.join(path_extracted_data, id_run)
+path_extracted_HA = os.path.join(path_extracted_data,'visual','HA')
 
 #add other usefulle directories
 path_extracted_data_SNA = os.path.join(path_extracted_data, 'SNA')
@@ -215,6 +216,11 @@ NonTrans_dur_sec = 60
 date_min = dt.datetime(2020,9,28,0,0,0) 
 date_max = min(dt.datetime.now(), dt.datetime(2021,8,1,23,59,59))
 
+
+dico_HAID_date = {'HA1':dt.datetime(2020,11,23), 
+                  'HA2':dt.datetime(2021,1,4), 
+                  'HA3':dt.datetime(2021,2,1), 
+                  'HA4':dt.datetime(2021,4,12)}
 
 #code associated to each actual readers
 dico_rc_sys = {'192.168.1.75':'Reader Pen 3-5',

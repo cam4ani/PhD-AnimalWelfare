@@ -101,7 +101,7 @@ from termcolor import colored
 
 #change r to 0 from 0.2
 sys.path.append('C:\\Users\\camil\\Desktop\\animals_code\\entropy')
-from entropy.entropy import sample_entropy
+#from entropy.entropy import sample_entropy #DEPRECIATED!
 #from entropy.entropy import sample_entropy #https://github.com/raphaelvallat/entropy
 
 #in my understanding the purpose of daily verification is meant to give the possibility that as soon as a new log file arrives one can verify if, wihtout needing to wait for one day. Hence, this daily verification wont induce daily cleaned record, as to be saved it must have the day after too (due to flickering (might need more than one entry, depending on if its in the middle of a flickering situation) and consecutives equal zones (only first entry of next day would be enough))
@@ -330,6 +330,8 @@ def FB_daily(config):
     li_active_tags = list(df_FB[df_FB['EndDate']>=date_max]['TagID'].unique())
     #Counter(li_active_tags)
     print('From the focalBirdinfo, you have %d ative tags'%len(li_active_tags))
+    #remove typos
+    df_FB['FocalLegringName'] = df_FB['FocalLegringName'].map(lambda x: x.strip(' '))
     
     ####################################################################################
     ####################### Add a unique HenID to tracking data ########################
@@ -400,7 +402,7 @@ def preprocessing_Origins(paths, config, save=True, dodevice=True):
     df_FB_daily = FB_daily(config)
     #merge tracking data with hens info
     df = pd.merge(df, df_FB_daily, on=['date','TagID'], how='inner') 
-    #note that : how=inner in order to oly have records that are correctly associated to a chicken
+    #note that : how=inner in order to only have records that are correctly associated to a chicken
     #how!= left as we need to remove some records if the system was resetting etc, so we dont want to keep the tracking data of tags that were not working correctly on that day
 
     ####################################################################################
@@ -609,128 +611,6 @@ def device_Variables(config, df_device):
     df_.to_csv(os.path.join(config.path_extracted_data, config.id_run+'_DeviceVariables.csv'),sep=';')
     return df_
 
-def preprocessing_experiment2(paths, path_FocalBird, config, save=True):
-    
-    '''each experiment should have his own function
-    This function opens (from a list of csv-path) all the csv, aggregate them into correct format'''
-
-    ####################################################################################
-    ############################### Initialise variables ###############################
-    ####################################################################################
-    path_extracted_data = config.path_extracted_data
-    id_run = config.id_run
-    date_min = config.date_min
-    date_max = config.date_max
-
-    #create path to save extracted data/info if not existing
-    if not os.path.exists(path_extracted_data):
-        os.makedirs(path_extracted_data)
-
-        
-    ####################################################################################
-    ####### Download all logs one by one adding the logfilename and the ts_order #######
-    ####################################################################################
-    li_df = []
-    for path_ in paths:
-        log_name = path_.split('\\')[-1].replace(' ','').replace('.','').split('.csv')[0]
-        df = pd.read_csv(path_, sep=';', names=['Timestamp', 'SerialNum', 'TagID', 'Zone', 'Marker','U1','U2']) 
-        df['log_file_name'] = log_name 
-        df['ts_order'] = df.index.copy() 
-        df['system'] = path_.split('TagUpdates')[1].split('\\')[0]
-        v = df.shape[0]
-        if v<80000:
-            print_color((('log: %s has '%log_name,'black'),(v,'red'),(' rows','black')))
-        else:
-            print_color((('log: %s has '%log_name,'black'),(v,'green'),(' rows','black')))
-        li_df.append(df)
-    df = pd.concat(li_df)
-    #remove the records with no timestamp (appearing at least in the first log of pen 3-5, named *_NA)
-    df = df[~df['Timestamp'].isin(['0','1','2','3','4','5','6','7','8','9','10'])]
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%d.%m.%Y %H:%M:%S") #faster with specified format than parse_dates
-    df['time'] = df['Timestamp'].map(lambda x: dt.datetime.time(x))
-    df['date'] = df['Timestamp'].map(lambda x: dt.datetime(x.year,x.month,x.day))
-    df['TagID'] = df['TagID'].astype(str)
-
-    
-    ####################################################################################
-    ############### Download info on henID associtation to (TagID,date) ################
-    ####################################################################################
-    df_FB = pd.read_csv(path_FocalBird, sep=';', parse_dates=['StartDate','EndDate'], dayfirst=True, encoding='latin') 
-    #fill end date to today+1 for the birds which we dont know when is there end date (+1: so that today is taken into account)
-    print(date_max+dt.timedelta(days=1))
-    df_FB['EndDate'].fillna(date_max+dt.timedelta(days=1), inplace=True)
-    df_FB['TagID'] = df_FB['TagID'].astype(str)
-    #exclude rows were tags were not functionning correctly for some reason 
-    df_FB = df_FB[df_FB['ShouldBeExcluded']!='yes']
-
-
-    ####################################################################################
-    ####################### Add a unique HenID to tracking data ########################
-    ####################################################################################   
-    #transform into one row per date per tagID
-    li_dico = []
-    for i in range(df_FB.shape[0]):
-        x = df_FB.iloc[i]
-        li_dates = pd.date_range(start=x['StartDate']+dt.timedelta(days=1), 
-                                 end=x['EndDate']-dt.timedelta(days=1), freq='D')
-        for d in li_dates:
-            dico_ = dict(x)
-            dico_['date'] = d
-            li_dico.append(dico_)
-    df_FB_daily = pd.DataFrame(li_dico)
-    #ensure date has no h/m/s
-    df_FB_daily['date'] = df_FB_daily['date'].map(lambda x: dt.datetime(x.year,x.month,x.day))
-
-    #merge tracking data with hens info
-    df = pd.merge(df, df_FB_daily[['HenID','PenID','date','TagID']], on=['date','TagID'], how='inner') 
-    #small verification:
-    #df[(df['HenID'].isnull())&(df['TagID']=='15')]['date'].unique()
-    #note that : how=inner in order to oly have records that are correctly associated to a chicken
-    #how!= left as we need to remove some records if the system was resetting etc, so we dont want to keep the tracking data of 
-    #tags that were not working correctly on that day
-
-    
-    ####################################################################################
-    ##################### Verify if each hen is in the correct pen #####################
-    ####################################################################################      
-    df_ = df.groupby(['HenID'])['system','PenID','TagID'].agg(lambda x: set(x)).reset_index()
-    df_['nbr_system'] = df_['system'].map(lambda x: len(x))
-    df_['li_system'] = df_['system'].map(lambda x: list(range(int(list(x)[0].split('_')[0].strip()), 
-                                                              int(list(x)[0].split('_')[1].strip())+1)))
-    df_['correct_pen'] = df_.apply(lambda x: int(list(x['PenID'])[0]) in x['li_system'], axis=1)
-    display(df_.head(10))
-    if df_[df_['nbr_system']>1].shape[0]!=0:
-        print('ERROR: some hens belong to two system:')
-        display(df_[df_['nbr_system']>1])
-        return df
-        #sys.exit()
-    if df_[~df_['correct_pen']].shape[0]!=0:
-        print('ERROR: some hens belong to the INCORRECT systems:')
-        display(df_[~df_['correct_pen']])
-        return df
-        #sys.exit()
-    
-    
-    ####################################################################################
-    ########################### Checks types, select column ############################
-    ####################################################################################   
-    df['PenID'] = df['PenID'].map(int).map(str)
-    df['Zone'] = df['Zone'].map(lambda x: x.strip())
-    df = df.sort_values(['Timestamp'], ascending=True)
-    df = df.filter(['Timestamp', 'HenID', 'Zone','PenID','log_file_name','ts_order','TagID','date','time']).reset_index(drop=True)
-    
-    ####################################################################################
-    ################# remove dates outside of datemin_date_max & save ##################
-    #################################################################################### 
-    if date_min!=None:
-        print(date_min)
-        print('lets look at the record only between date %s and %s'%(str(date_min),str(date_max)))
-        df = df[(df['Timestamp']>=date_min) & (df['Timestamp']<=date_max)]
-
-    if save:
-        df.to_csv(os.path.join(path_extracted_data, id_run+'_PreprocessRecords.csv'),sep=';')
-    
-    return(df)
 
 
 ##########################################################################################################################################
@@ -1145,80 +1025,6 @@ def general_cleaning(df, config, save=True):
     print ("Total running time: %.2f mn" %((END_TIME-START_TIME)/60))  
     
     return(df)
-
-
-
-def bining_broilers(df_ts, config, nbr_sec_mean, name='', mi=None, ma=None, save=True):
-    
-    ''' 
-    *input: nbr_sec_mean: period, df_ts: time serie dataframe, typically created by the function "time_series_henColumn_tsRow()"
-    *output: a csv where timestamp ts results in the bining the all record from ts-period to ts]
-    *main idea: create time series for each hen by taking the most frequent zone for each "nbr_sec_mean" seconds period
-    *programming main idea: First we create a list of timestamp including only the one we want (i.e. one per nbr_sec_mean seconds). Then we match the old timestamp with the smallest of the list taht is beger of equal to the actual timestamp
-    '''
-    
-    #start recording the time it last
-    START_TIME = time.perf_counter()
-      
-    #initialize parameters
-    id_run = config.id_run
-    path_extracted_data = config.path_extracted_data
-    nbr_sec = 1 #should stay one for now
-    
-    #create a directory if not existing
-    path_ = os.path.join(path_extracted_data, 'HensTimeSeries')
-    if not os.path.exists(os.path.join(path_)):
-        os.makedirs(os.path.join(path_))
-        
-    #######################################################################################################################
-    ##### create a list of dates that we want starting from our initial and end dates with the wanted binning period ######
-    if mi==None:
-        mi = min(df_ts['Timestamp'].tolist())
-    if ma==None:
-        ma = max(df_ts['Timestamp'].tolist())
-    #keeping dataframe that is linked to these dates
-    df_ts = df_ts[(df_ts['Timestamp']>=mi) & (df_ts['Timestamp']<=ma)]
-    
-    #on arondi a la minute du bas/haut pour ne pas rater des records 
-    Daterange = pd.date_range(start = mi-dt.timedelta(seconds=mi.second), 
-                              end = ma+dt.timedelta(seconds=60-ma.second), 
-                              freq = 'S')    
-    print('The starting date of the datetime list is: %s, and the ending date is: %s'%(str(Daterange[0]), str(Daterange[-1])))
-    #take only the wanted timestamps (nbr_sec_mean)
-    Daterange = [Daterange[i] for i in range(len(Daterange)) if i%nbr_sec_mean==0]
-    print('The starting date of the selected datetime list is: %s, and the ending date is: %s'%(str(Daterange[0]), str(Daterange[-1])))
-    
-    #######################################################################################################################
-    #add new timestamp to the initial file
-    df_date = pd.DataFrame({'New_Timestamp':Daterange})
-    df_date['New_Timestamp'] = df_date['New_Timestamp'].map(lambda x: pd.to_datetime(x))
-    df_ts = pd.merge_asof(df_ts, df_date, left_on=['Timestamp'], right_on=['New_Timestamp'], direction='forward')
-    
-    #aggregate (by using groupby: for each hen take its time serie and find the most frequent zone per new_timestamp)
-    for h in tqdm.tqdm([x for x in df_ts.columns if x.startswith('hen_')]):
-        df_ = df_ts[[h,'New_Timestamp']].copy()
-        df_['nbr_sec'] = nbr_sec
-        #df_verification = df_ts.groupby(['New_Timestamp']).agg({'Timestamp':['max', 'min']}).reset_index()
-        #df_verification.to_csv(os.path.join(path_ ,id_run+'_ts_MostFrequentZone_period_VERIFICATION'+str(nbr_sec_mean)+'_'+str(mi).split(' ')[0]+'_'+str(ma).split(' ')[0]+'_'+h+'.csv'), sep=';', index=False)
-        df__ = df_.groupby(['New_Timestamp',h])['nbr_sec'].sum().reset_index() #sum to count as we have seconds
-        df_final = df__.groupby(['New_Timestamp'])[h,'nbr_sec'].agg(lambda x: tuple(x)).reset_index()
-        df_final['most_frequent_zone'] = df_final.apply(lambda x: x[h][x['nbr_sec'].index(max(x['nbr_sec']))], axis=1)
-        df_final['nbr_duration_per_zone'] = df_final.apply(lambda x: str({x[h][k]:x['nbr_sec'][k] for k in range(len(x[h]))}), axis=1)
-        df_final['nbr_lost_duration_per_zone'] = df_final['nbr_duration_per_zone'].map(lambda x: str({z:v for z,v in eval(x).items() if \
-                                                                           v!=max(eval(x).values())}))
-        df_final['nbr_lost_duration'] = df_final['nbr_lost_duration_per_zone'].map(lambda x: sum(eval(x).values()))
-        df_final['perc_lost_duration'] = df_final['nbr_lost_duration'].map(lambda x: x/nbr_sec_mean*100)
-        df_final['day'] = df_final['New_Timestamp'].map(lambda x: dt.datetime(x.year,x.month,x.day))
-        if save:
-            df_final.to_csv(os.path.join(path_ ,id_run+'_ts_MostFrequentZone_period'+str(nbr_sec_mean)+'_'+name+'_'+str(mi).split(' ')[0]+\
-                                         '_'+str(ma).split(' ')[0]+'_'+h+'.csv'), sep=';', index=False)
-    
-    #running time info and return final cleaned df
-    END_TIME = time.perf_counter()
-    print ("Total running time: %.2f mn" %((END_TIME-START_TIME)/60))
-    
-    return
-
 
 
 def cleaning_mouvement_records(df, config, nbr_block_repetition, flickering_type1=True, save=True, is_bb_experiment=False,
@@ -2087,7 +1893,7 @@ def corr_from_dep2feature(li_output, li_cont, df_modelling, p_val=0.05, print_=F
 
     
 def corr_from_feature2feature(li, df_modelling, p_val=0.05, print_=False):
-    '''Computing correlation for continuous vs continuous for each combination of two variable in the list'''
+    '''Computing correlation for continuous vs continuous for each combination of two variable in the list (named li)'''
     df_feature_feature = pd.DataFrame(columns=['var1', 'var2', 'val_spear', 'pval_spear', 'val_pers','pval_pers'])
     #pearson linear, spearman: monotonic relationship
     i = 0 ; k = 0; t = 0
@@ -4194,11 +4000,9 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
            empproba=pd.NamedAgg(column='Zone', aggfunc=lambda x: \
                                 empirical_probabilites_of_goingup([int(i.split('_Zone')[0]) for i in list(x)])),
            distribution_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: DistributionEntropy(list(x))),
-           #sample_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: sample_entropy([int(i.split('_Zone')[0]) for i in x], order=2,
-           #                                                                           metric='chebyshev')),
            vertical_travel_distance=pd.NamedAgg(column='Zone', aggfunc=lambda x: vertical_travel_distance(list(x))),
-           #SampEnt_order2=pd.NamedAgg(column='Zone', aggfunc=lambda x: sample_entropy([dico_zone_order[i] for i in x], order=2,
-           #                                                                                metric='chebyshev')),
+           SampEnt_order2=pd.NamedAgg(column='Zone', aggfunc=lambda x: sample_entropy([dico_zone_order[i] for i in x], order=2,
+                                                                                           metric='chebyshev')),
            t_DU_missingZone_mvtPerc=pd.NamedAgg(column='Zone', aggfunc=lambda x: li_missingZone_mvtPerc_DU([dico_zone_order[i] for i in x],
                                                                                                                 nbr_sec)),
            li_event_chaoticmvt_z_d=pd.NamedAgg(column='Zone', aggfunc=lambda x: li_event_chaoticmvt_z_d([dico_zone_order[i] for i in x],
@@ -4211,7 +4015,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
         df_daily['nbr_stays_'+z] = df_daily['nbr_stays'].map(lambda x: x.get(z,0))
         df_daily['nbr_appearances_'+z] = df_daily['nbr_appearances'].map(lambda x: x.get(z,0))
         df_daily['empproba_'+z] = df_daily['empproba'].map(lambda x: x.get(z,np.nan))
-    df_daily.drop(['nbr_stay','empproba','nbr_appearances'], inplace=True, axis=1)
+    df_daily.drop(['nbr_stays','empproba','nbr_appearances'], inplace=True, axis=1)
     #add maximum duration in zone4
     df_daily['Max_duration_zone_4'] = df_daily['dico_zone_sortedduration'].map(lambda x: max(x.get('4_Zone',[0])))
     
