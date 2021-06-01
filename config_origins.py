@@ -22,6 +22,8 @@ day_name = 'TrackingDaysWhenCanWeUseWhat.csv'
 path_initial_data = r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2\GantnerSystem\_dailycheckingSystem'
 path_dataoutput = r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2\DataOutput'
 path_extracted_data = os.path.join(path_dataoutput,'TrackingSystem') 
+path_extracted_HA = os.path.join(path_dataoutput,'HA') 
+
 path_FocalBird = os.path.join( r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2','FOCAL BIRDS',focal_name)
 path_Days = os.path.join( r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2','FOCAL BIRDS',day_name)
 path_performance = os.path.join(r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2\Productivity')
@@ -29,7 +31,7 @@ path_performance = os.path.join(r'G:\VPHI\Welfare\2- Research Projects\OFHE2.Ori
 #add id_run for readibility
 path_extracted_data_daily_check = os.path.join(path_extracted_data, 'DailyVerifications') #not linked to the id_run as its more general
 path_extracted_data = os.path.join(path_extracted_data, id_run)
-path_extracted_HA = os.path.join(path_extracted_data,'visual','HA')
+path_extracted_HA_visual = os.path.join(path_extracted_HA,'visual')
 
 #add other usefulle directories
 path_extracted_data_SNA = os.path.join(path_extracted_data, 'SNA')
