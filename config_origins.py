@@ -71,7 +71,15 @@ dico_pen_ts = {3:'TrackingSystem 3-5',
               'Pen 9':'TrackingSystem 8-9',
               'Pen 10':'TrackingSystem 10-12',
               'Pen 11':'TrackingSystem 10-12',
-              'Pen 12':'TrackingSystem 10-12'}
+              'Pen 12':'TrackingSystem 10-12',
+              'pen3':'TrackingSystem 3-5',
+              'pen4':'TrackingSystem 3-5',
+              'pen5':'TrackingSystem 3-5',
+              'pen8':'TrackingSystem 8-9',
+              'pen9':'TrackingSystem 8-9',
+              'pen10':'TrackingSystem 10-12',
+              'pen11':'TrackingSystem 10-12',
+              'pen12':'TrackingSystem 10-12'}
 
 #Adatability study
 li_binmn = [5,10,15,20,30]
