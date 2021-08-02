@@ -17,7 +17,7 @@ id_run = 'correctlightschedule_'
 #path_initial_data\Abteile 3_5\log_*
 #path_initial_data\Abteile 10_12\log_*
 #CSV
-focal_name = 'FocalBirdsInfo12-04-2021.csv'
+focal_name = 'FocalBirdsInfo26-07-2021.csv'
 day_name = 'TrackingDaysWhenCanWeUseWhat.csv'
 path_initial_data = r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2\GantnerSystem\_dailycheckingSystem'
 path_dataoutput = r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2\DataOutput'
@@ -216,6 +216,9 @@ dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m'
                            }
 #the keys are included into their values information (i.e. datex:{open time, close time}, date x is opening at that time and closing at that time too (i.e. until (included) date x)
 
+#the date will be removed for all tag with >= lf_counter time having ==0
+lf_counter = 5
+
 #went out after its WG_after_opening_mn mn opening of WG?
 WG_after_opening_mn = 15
 
@@ -224,7 +227,7 @@ NonTrans_dur_sec = 60
 
 #min and max date to consider, all other dates will be removed by the "preprocessing_*()" function
 date_min = dt.datetime(2020,9,28,0,0,0) 
-date_max = min(dt.datetime.now(), dt.datetime(2021,8,1,23,59,59))
+date_max = min(dt.datetime.now(), dt.datetime(2021,7,25,23,59,59))
 
 
 dico_HAID_date = {'HA1':dt.datetime(2020,11,23), 
