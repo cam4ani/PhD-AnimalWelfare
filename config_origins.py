@@ -380,7 +380,8 @@ date_max = min(dt.datetime.now(), dt.datetime(2021,7,25,23,59,59))
 dico_HAID_date = {'HA1':dt.datetime(2020,11,23), 
                   'HA2':dt.datetime(2021,1,4), 
                   'HA3':dt.datetime(2021,2,1), 
-                  'HA4':dt.datetime(2021,4,12)}
+                  'HA4':dt.datetime(2021,4,12), 
+                  'HA5':dt.datetime(2021,7,25)} #26 wont recognize the bird as tracking stop on the 25. we did HA on 26 but last day of tracking is 25
 
 #code associated to each actual readers
 dico_rc_sys = {'192.168.1.75':'Reader Pen 3-5',
