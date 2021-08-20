@@ -1,5 +1,23 @@
-
+------------------------------------------ Datasets
+------------------- 1
 Sample of the data: "Sample-Traking-Data.csv"
+
+------------------- 2
+Video observations results for both training and tst dataset: "Video_Observation_training&testing.csv".
+with the following annotation code:
+    -1: can't be sure (e.g. not clear on camera)
+    1: CR - correct record cf terminology described in paper
+    0: WR - wrong record cf terminology described in paper
+    3: an actual transition that was missed by our tracking system
+    Any term describing a zone name (e.g. Tier 1, Tier2, winter garden, ...): an actual transition that was missed by our tracking system
+
+Out of the 48 batches initially chosen for the verification dataset, we ended up having 42 batches due to 
+•cameras orientation issues, 
+•backpack not being clearly distinguishable and 
+•birds that did not moved during the entire batch and for which we had no evidence if the tag functioned correctly (therefore were removed from the batches)
+
+Training dataset further details: a total of 46 tags is involved in the training dataset, with 17 tags involved with more than 100 observations and 35 tags involved in more than 40 observations. The training dataset contains 1’740 observations from the tracking system involving pen 3-5, 1’407 observations from the tracking system involving pens 10-12, and 1’127 observations from the tracking system involving pens 8-9. The training dataset contains 916 observations from the litter area, 2’393 observations from the lower perch, 404 observations from the nestbox zone and 561 observations from the top floor.
+
 
 ------------------------------------------ Decision tree classifiers
 1_PreprocessedTraining&TestingData.ipynb: merge the records metadata with the video analysis. output: "id_run+InputCleaning.csv"
