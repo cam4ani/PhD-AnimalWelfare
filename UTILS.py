@@ -101,8 +101,7 @@ from termcolor import colored
 
 #change r to 0 from 0.2
 sys.path.append('C:\\Users\\camil\\Desktop\\animals_code\\entropy')
-#from entropy.entropy import sample_entropy #DEPRECIATED!
-from entropy.entropy import sample_entropy #https://github.com/raphaelvallat/entropy
+#from entropy.entropy import sample_entropy #DEPRECIATED use now antropy!
 
 #in my understanding the purpose of daily verification is meant to give the possibility that as soon as a new log file arrives one can verify if, wihtout needing to wait for one day. Hence, this daily verification wont induce daily cleaned record, as to be saved it must have the day after too (due to flickering (might need more than one entry, depending on if its in the middle of a flickering situation) and consecutives equal zones (only first entry of next day would be enough))
 
@@ -211,17 +210,16 @@ def config_param_ver(config):
 ############################################################ Preprocessing ###############################################################
 ##########################################################################################################################################
 
+def FB_process(config):
+    '''minor processing - make it nicer m& more homogeneous with other dataset'''
+    #ASSUMPTION: each henID is linked to a unique PenID!
+    #some hens appeared several times (e.g. changed tags, changed legrings,...), so first we will join all info
     
-def FB_daily(config):
     #initialise parameters
     path_FocalBird = config.path_FocalBird
     date_max = config.date_max 
-
-    ####################################################################################
-    ############### Download info on henID association to (TagID,date) ################
-    ####################################################################################
-    #verified dates:correct:
-    df_FB = pd.read_csv(path_FocalBird, sep=';', parse_dates=['StartDate','EndDate'], dayfirst=True, encoding='latin')
+    
+    df_FB = pd.read_csv(path_FocalBird, sep=';', parse_dates=['StartDate','EndDate','InitialStartDate'], dayfirst=True, encoding='latin')
     #fill end date to today+1 for the birds which we dont know when is there end date (+1: so that today is taken into account)
     df_FB['EndDate'].fillna(date_max+dt.timedelta(days=1), inplace=True)
     df_FB['TagID'] = df_FB['TagID'].map(int).map(str)  
@@ -230,19 +228,46 @@ def FB_daily(config):
     df_FB['PenID'] = df_FB['PenID'].map(lambda x: 'pen'+str(x))
     df_FB['HenID'] = df_FB['HenID'].map(int).map(str)
     df_FB['HenID'] = df_FB['HenID'].map(lambda x: 'hen_'+str(x)) 
+
+    #remove typos
+    df_FB['FocalLegringName'] = df_FB['FocalLegringName'].map(lambda x: x.strip(' '))
+    #we cant remove the disfunctioning tags now otherwise we will lose theire weight for future
+    return df_FB
+
+def FB_process_hen(config):
+    '''create one row per hen'''
+    #we cant use FB_process as it removes the animals that have no tracked days, whereas we might want to keep for HA
+    df_FB = FB_process(config)
+    df_FB = df_FB.fillna('')
+    #process weight
+    li_weight = [x for x in df_FB.columns if 'weight' in x]
+    df_FB[li_weight] = df_FB[li_weight].applymap(lambda x: str(x).replace(',','.'))
+    li_var_hen = ['HenID','PenID','CLASS','R-Pen','InitialStartDate','early_death']
+    df_FB_ = df_FB.groupby(['HenID'])[[i for i in li_var_hen if i!='HenID']+li_weight].agg(lambda x: list(set([i for i in x if i!='']))).reset_index()
+    li = [i for i in df_FB_.columns if i not in ['HenID', 'CLASS']]
+    df_FB_['CLASS'] = df_FB_['CLASS'].map(lambda x: x[0] if len(x)==1 else None)
+    df_FB_[li] = df_FB_[li].applymap(lambda x: x[0] if len(x)==1 else np.nan)
+    df_FB_[li_weight] = df_FB_[li_weight].applymap(lambda x: float(x) if '+70 -30' not in str(x) else np.nan)
+    df_FB_['Treatment'] = df_FB_['PenID'].map(lambda x: 'OFH' if x in ['pen3','pen5','pen9','pen11'] else 'TRAN')
+    df_FB_['early_death'] = df_FB_['early_death'].fillna(0).replace(2,1) #2 means not sure
+    #save as a focalbirds csv
+    df_FB_.to_csv(os.path.join(config.path_extracted_data, config.id_run+'df_FOCALBIRDS.csv'), sep=';', index=False)
+    return df_FB_
+
+
+def FB_daily(config):
+    '''will be used for example in preprocessing_Origins in order to match each (tagid,date) to a unique henid'''
+    
+    #download process Focalbirds info
+    df_FB = FB_process(config)
     
     #exclude rows were tags were not functionning correctly for some reason 
     df_FB = df_FB[df_FB['ShouldBeExcluded']!='yes']
     #define a list with the active tags of today/last date
-    li_active_tags = list(df_FB[df_FB['EndDate']>=date_max]['TagID'].unique())
+    li_active_tags = list(df_FB[df_FB['EndDate']>=config.date_max]['TagID'].unique())
     #Counter(li_active_tags)
     print('From the focalBirdinfo, you have %d ative tags'%len(li_active_tags))
-    #remove typos
-    df_FB['FocalLegringName'] = df_FB['FocalLegringName'].map(lambda x: x.strip(' '))
-    
-    ####################################################################################
-    ####################### Add a unique HenID to tracking data ########################
-    ####################################################################################   
+
     #transform into one row per date per tagID
     li_dico = []
     for i in range(df_FB.shape[0]):
@@ -257,7 +282,6 @@ def FB_daily(config):
     #ensure date has no h/m/s
     df_FB_daily['date'] = df_FB_daily['date'].map(lambda x: dt.datetime(x.year,x.month,x.day))
     return(df_FB_daily)
-
 
 
 def clean_device(config, df_device):
@@ -1614,7 +1638,7 @@ def pca_fct(df,caracteristics,target=None,rs=0):
 ######################################################### variable computation ###########################################################
 ##########################################################################################################################################
 
-#https://en.wikipedia.org/wiki/Sample_entropy
+#taking from: https://en.wikipedia.org/wiki/Sample_entropy
 def sampen(L, r=None, m=2):
     '''Usually m=2 and r=0.2*std'''
     N = len(L)
@@ -1639,6 +1663,18 @@ def sampen(L, r=None, m=2):
 
     # Return SampEn
     return -np.log(A/B)
+
+#MSSD (Mean of the squared successive differences)
+#It is calculated by taking the sum of the differences between consecutive observations squared, then taking the mean of that 
+#sum and dividing by two
+def mssd(li, maxnbr_nan=None):
+    li_diff = [(li[i+1]-li[i])**2 for i in range(0,len(li)-1) if (math.isnan(li[i+1])==False)&(math.isnan(li[i])==False)]
+    #return NA if to many nan
+    if maxnbr_nan!=None:
+        if (len(li)-len(li_diff))>=maxnbr_nan:
+            return(np.nan)
+    return(np.mean(li_diff)/2)
+
 
 #computing chi2-distance
 def chi2_distance(l1,l2,remove_warning=False):
@@ -1944,7 +1980,7 @@ def li_boots_starting_sec(li, nbr_sec):
 
 
 #not linked to the order, only the distribution (proba of a certain zone)
-def DistributionEntropy(labels):
+def old_DistributionEntropy(labels):
     '''compute the distribution entropy'''
     value,counts = np.unique(labels, return_counts=True)
     return entropy(counts)
@@ -2726,7 +2762,7 @@ def sampen(L, r=2, m=2):
     return -np.log(A/B)
 
 
-def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', save=True, time4entropy=False, has_cons_equal_zone=True): 
+def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', save=True, has_cons_equal_zone=True): 
     
     ''' 
     Note: work with ts that have nan (typically at begining)
@@ -2826,7 +2862,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     df_ts_night.rename(columns={'variable':'HenID','value':'Zone'}, inplace=True)
     df_ts_night = df_ts_night[~df_ts_night['Zone'].isnull()].groupby(['HenID','night_level']).agg(
                             night_Max_duration_zones=pd.NamedAgg(column='Zone', aggfunc=lambda x: max_duration_zones(x)),
-                            night_distribution_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: DistributionEntropy(list(x))),
+                            night_distribution_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: entropy(list(Counter(x).values()),base=2)),
                             night_Total_number_transition=pd.NamedAgg(column='Zone', 
                                                                       aggfunc=lambda x: nbr_transition(list((x))))).reset_index()
     df_ts_night['is_mvt_night'] = df_ts_night['night_Total_number_transition'].map(lambda x: int(x>0))
@@ -2922,11 +2958,11 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     #add latency variables
     for x in li_Zone:
         v = 'FirstTimestamp_'+x
-        df_daily[v.replace('FirstTimestamp','latency')] = df_daily[v].map(lambda x: (dt.datetime(x.year,x.month,x.day,
+        df_daily[v.replace('FirstTimestamp','latency')+'_h'] = df_daily[v].map(lambda x: (dt.datetime(x.year,x.month,x.day,
                                                                       dico_night_hour[correct_key(x, dico_night_hour)]['end_h'],
-                 dico_night_hour[correct_key(x, dico_night_hour)]['end_m'],0)-x).total_seconds()/60 if x is not pd.NaT else 0)
+                 dico_night_hour[correct_key(x, dico_night_hour)]['end_m'],0)-x).total_seconds()/60/60 if x is not pd.NaT else 0)
     #replace by np.nan when WG is close
-    df_daily.loc[df_daily['level']<date_first_opening_WG,'latency_1_Zone'] = np.nan
+    df_daily.loc[df_daily['level']<date_first_opening_WG,'latency_1_Zone_h'] = np.nan
 
 
     ########################################################
@@ -2935,42 +2971,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     df_.rename(columns={'Zone':'Total_number_zone'}, inplace=True)
     df_daily = pd.merge(df_daily, df_, how='outer', on=['HenID','level'])
     
-
-    ########################################################
-    ####running SampEnt, DistrEnt computed over the whole period and not only the day. taking only the value at 17h
-    ########################################################
-    #faster thanks to ValueDelta
-    if time4entropy:
-        ValueDelta = config.ValueDelta
-        print('----------------- Running entropies at end of each level....')
-        dico_HenID_day_ent = {}
-        for k, df_hen in df.groupby(['HenID']):
-            df_hen = df_hen[~df_hen['Zone'].isnull()]
-            df_hen['Zone'] = df_hen['Zone'].map(lambda x: dico_zone_order[x])
-            dico_HenID_day_ent[k] = {}
-            for L in df_hen['level'].unique():
-                df_ = df_hen[df_hen['level']<=L]
-                ts_value = df_.tail(1)[timestamp_name].values[0]
-                li_zone = df_['Zone'].tolist()
-                #restrict the time serie to one value per ValueDelta seconds
-                li_zone = [x for i,x in enumerate(li_zone) if i%ValueDelta==0]
-                nbr_value = len(li_zone)
-                dico_HenID_day_ent[k][pd.to_datetime(L)] = {'SampEnt': sample_entropy(li_zone, order=2, metric='chebyshev'),
-                                                            'DistEnt': DistributionEntropy(li_zone), 
-                                                            'ts_value': ts_value, 'nbr_value': nbr_value}
-                for zone_ in dico_zone_order.values():
-                    dico_HenID_day_ent[k][pd.to_datetime(L)]['SampEnt_'+str(zone_)] = sample_entropy([int(z==zone_) for z in li_zone],
-                                                                                                     order=2, metric='chebyshev')
-        df_daily['RunDistEnt_onLastTsOfEachLevel'] = df_daily.apply(lambda x: dico_HenID_day_ent[x['HenID']][x['level']]['DistEnt'],
-                                                                axis=1)
-        df_daily['RunEnt_onLastTsOfEachLevel_nbr_value'] = df_daily.apply(lambda x: dico_HenID_day_ent[x['HenID']][x['level']]
-                                                                              ['nbr_value'], axis=1)
-        df_daily['RunEnt_onLastTsOfEachLevel_ts_value'] = df_daily.apply(lambda x: dico_HenID_day_ent[x['HenID']][x['level']]
-                                                                             ['ts_value'], axis=1)    
-        for zone_ in dico_zone_order.values():
-            df_daily['RunSampEnt_onLastTsOfEachLevel_'+str(zone_)] = df_daily.apply(lambda x: dico_HenID_day_ent[x['HenID']][x['level']]['SampEnt_'+str(zone_)],axis=1)   
         
-
     ########################################################        
     #compute some variables 
     ########################################################
@@ -2978,7 +2979,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     #e.g.[einstreu,eintreu,rampe,rampe.....]
     #excluding empty zones, because it influences for exemple the entropy computation (if full of nan, then might be more predictable)    
     print('----------------- compute some variables based on a list of zones over a day....')
-                        
+    #note that entropy gets as input a list of proba distribution (or count of each element)                    
     df_ = df[~df['Zone'].isnull()].groupby(['HenID','level']).agg(
            list_of_durations=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_of_durations(x, nbr_sec)),
            zone_list=pd.NamedAgg(column='Zone', aggfunc=lambda x: tuple(x)),
@@ -2992,7 +2993,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
                                         dict_of_zones_appearances_with_transitionalZones([int(i.split('_Zone')[0]) for i in list(x)])), 
            empproba=pd.NamedAgg(column='Zone', aggfunc=lambda x: \
                                 empirical_probabilites_of_goingup([int(i.split('_Zone')[0]) for i in list(x)])),
-           distribution_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: DistributionEntropy(list(x))),
+           distribution_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: entropy(list(Counter(list(x)).values()),base=2)),
            vertical_travel_distance=pd.NamedAgg(column='Zone', aggfunc=lambda x: vertical_travel_distance(list(x))),
            #SampEnt_order2=pd.NamedAgg(column='Zone', aggfunc=lambda x: sample_entropy([dico_zone_order[i] for i in x], order=2,
            #                                                                                metric='chebyshev')),
@@ -3003,6 +3004,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
            ).reset_index()
 
     df_daily = pd.merge(df_daily, df_, how='outer', on=['HenID','level'])
+    
     #add sample entropy without accounting on duration
     df_daily['SampleEntropy'] = df_daily['list_of_zones'].map(lambda x: sampen([config.dico_zone_order[i] for i in x],
                                                                                r=0,m=2) if len(x)>5 else np.nan)
@@ -3013,7 +3015,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     for z in li_Zone:
         df_daily['nbr_stays_'+z] = df_daily['nbr_stays'].map(lambda x: x.get(z,0))
         df_daily['perc_nbr_stays_'+z] = df_daily.apply(lambda x: x['nbr_stays_'+z]/x['nbr_stays_total']*100, axis=1)
-        df_daily['nbr_appearances_'+z] = df_daily['nbr_appearances'].map(lambda x: x.get(z,0))
+        df_daily['nbr_appearances_'+z] = df_daily['nbr_appearances'].map(lambda x: x.get(int(z.split('_')[0]),0))
         df_daily['empproba_'+z] = df_daily['empproba'].map(lambda x: x.get(z,0)) #if no transition to a zone then emp proba is 0
     #total number of stay %of stays per zone
     df_daily['nbr_stays_total'] = df_daily['nbr_stays'].map(lambda x: np.nansum(list(x.values())))
@@ -3090,8 +3092,8 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     #df_zone['level'] = df_zone['level'].map(lambda x: dt.datetime(x.year,x.month,x.day)) 
     df_daily = pd.merge(df_daily, df_zone, on=['HenID','level'], how='outer')
     df_daily['Nestbox_time_of_first_staid_longer_than'+str(nestbox_sec)+'sec'] = df_daily['4_Zone_tuple_ts_dur'].map(lambda x: min_date_nestbox(x, nestbox_sec))        
-    #latency_since15mnnestbox == 'minutes until light turn off after first transition longer than 15mn to nestboxzone
-    df_daily['latency_since15mnnestbox'] = df_daily['Nestbox_time_of_first_staid_longer_than'+str(nestbox_sec)+'sec'].map(lambda x: (dt.datetime(x.year,x.month,x.day,dico_night_hour[correct_key(x, dico_night_hour)]['end_h'],dico_night_hour[correct_key(x, dico_night_hour)]['end_m'],0)-x).total_seconds()/60 if x is not pd.NaT else 0)
+    #latency_since15mnnestbox_h == 'h until light turn off after first transition longer than 15mn to nestboxzone
+    df_daily['latency_since15mnnestbox_h'] = df_daily['Nestbox_time_of_first_staid_longer_than'+str(nestbox_sec)+'sec'].map(lambda x: (dt.datetime(x.year,x.month,x.day,dico_night_hour[correct_key(x, dico_night_hour)]['end_h'],dico_night_hour[correct_key(x, dico_night_hour)]['end_m'],0)-x).total_seconds()/60/60 if x is not pd.NaT else 0)
     
     ### successful intrusion ratio: (#staid <successfullIntrusionHour h longer than nestbox_sec) / (#of staid <successfullIntrusionHour h)
     df_daily['sucessIntrusion_'+str(successfullIntrusionHour)] = df_daily['4_Zone_tuple_ts_dur'].map(lambda x: successfullIntrusion(successfullIntrusionHour,x,nestbox_sec))
@@ -3127,15 +3129,15 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     df_daily['list_timestamps_seondsOfTheDay'] = df_daily['list_timestamps'].map(lambda x: [t.hour*60*60+t.minute*60+t.second for t in x])
     #add 5 and 95 if not already here, for the next variable (overall duraiton that hold 5-95% of its transition
     for p in set(li_perc_activity+[5,95]):
-        df_daily['activity_'+str(p)+'percentile_sec'] = df_daily['list_timestamps_seondsOfTheDay'].map(lambda x: np.nanpercentile(x, 
-                                                                                                        p, interpolation='lower'))
-        df_daily['activity_'+str(p)+'percentile_time'] = df_daily['activity_'+str(p)+'percentile_sec'].map(lambda x: time.strftime("%H:%M:%S",time.gmtime(x)) if math.isnan(x)==False else np.nan)
+        df_daily['activity_'+str(p)+'percentile_h'] = df_daily['list_timestamps_seondsOfTheDay'].map(lambda x: np.nanpercentile(x, 
+                                                                                                        p, interpolation='lower')/60/60)
+        df_daily['activity_'+str(p)+'percentile_time'] = df_daily['activity_'+str(p)+'percentile_h'].map(lambda x: time.strftime("%H:%M:%S",time.gmtime(x)) if math.isnan(x)==False else np.nan)
         
     #Overall duration that hold 5-95% of its transition    
     #df_daily['duration_5-95percentile_transition'] = df_daily.apply(lambda x: time.strftime("%H:%M:%S",
-    #                                                                                        time.gmtime(x['activity_95percentile_sec'] -\
-    #                                                                                                   x['activity_5percentile_sec'])) if\
-    #                                                                math.isnan(x['activity_5percentile_sec'])==False else np.nan,
+    #                                                                                        time.gmtime(x['activity_95percentile_h'] -\
+    #                                                                                                   x['activity_5percentile_h'])) if\
+    #                                                                math.isnan(x['activity_5percentile_h'])==False else np.nan,
     #                                                                axis=1)                                                                 
     #Latest daily transition-first daily transition
     df_daily['duration_last-firsttransition_mn'] = df_daily['list_timestamps_seondsOfTheDay'].map(lambda x: time.gmtime(max(x)-min(x)) if\
@@ -3151,39 +3153,20 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     #if no first entry in wintergarten today, then it did not went out at all
     df_daily['in_WG_'+str(WG_after_opening_mn)+'mnAfterOpening'] = df_daily['in_WG_'+str(WG_after_opening_mn)+'mnAfterOpening'].fillna(False)  
     #max duration in WG
-    df_daily['Max_duration_WG'] = df_daily['dico_zone_sortedduration'].map(lambda x: max(x.get('1_Zone',[0])))
+    df_daily['Max_duration_WG_h'] = df_daily['dico_zone_sortedduration'].map(lambda x: max(x.get('1_Zone',[0]))/60/60)
 
     #add np.nan for the WG var when the WG was close
-    for v in ['in_WG_'+str(WG_after_opening_mn)+'mnAfterOpening', 'Max_duration_WG']:
-        df_daily[v] = df_daily.apply(lambda x: x[v] if x['level']>date_first_opening_WG else np.nan, axis=1)
+    #print([x for x in df_daily.columns if '1_Zone' in x]) 
+    for v in ['in_WG_'+str(WG_after_opening_mn)+'mnAfterOpening', 'Max_duration_WG_h']+[x for x in df_daily.columns if '1_Zone' in str(x)]:
+        df_daily[v] = df_daily.apply(lambda x: x[v] if x['level']>=date_first_opening_WG else np.nan, axis=1)
 
     ########################################################
-    #add basics hens info and save df_FOCALBIRDS
+    #add basics hens info
     ########################################################
     print('------------ add hen basics info')
-    #download info on henID associtation to (TagID,date) 
-    df_FB = pd.read_csv(path_FocalBird, sep=';', parse_dates=['StartDate','EndDate'], dayfirst=True, encoding='latin') 
-    df_FB['HenID'] = df_FB['HenID'].map(lambda x: 'hen_'+str(x))
-    df_FB['TagID'] = df_FB['TagID'].map(lambda x: 'tag_'+str(int(x)))
-    df_FB = df_FB[df_FB['ShouldBeExcluded']!='yes']
-    df_FB['EndDate'] = df_FB['EndDate'].fillna(date_max+dt.timedelta(days=1))
-    df_FB = df_FB.fillna('')
-    #ASSUMPTION: each henID is linked to a unique PenID!
-    #some hens appeared several times (e.g. changed tags, changed legrings,...), so first we will join all info
-    
-    li_weight = [x for x in df_FB.columns if 'weight' in x]
-    df_FB[li_weight] = df_FB[li_weight].applymap(lambda x: str(x).replace(',','.'))
-    li_var_hen = ['HenID','PenID','CLASS','R-Pen','InitialStartDate','early_death']+li_weight
-    df_FB_ = df_FB.groupby(['HenID'])[[i for i in li_var_hen if i!='HenID']].agg(lambda x: list(set([i for i in x if i!='']))).reset_index()
-    li = [i for i in df_FB_.columns if i not in ['HenID', 'CLASS']]
-    df_FB_['CLASS'] = df_FB_['CLASS'].map(lambda x: x[0] if len(x)==1 else None)
-    df_FB_[li] = df_FB_[li].applymap(lambda x: x[0] if len(x)==1 else np.nan)
-    df_FB_[li_weight] = df_FB_[li_weight].applymap(lambda x: float(x) if '+70 -30' not in str(x) else np.nan)
-    df_FB_['Treatment'] = df_FB_['PenID'].map(lambda x: 'OFH' if x in [3,5,9,11] else 'TRAN')
-    #save as a focalbirds csv
-    df_FB_.to_csv(os.path.join(path_extracted_data,id_run+'df_FOCALBIRDS.csv'), sep=';', index=False)
-
-    li_var_hen = li_var_hen+['Treatment']
+    #recompute the df in case thing changed in between
+    df_FB_ = FB_process_hen(config)
+    li_var_hen = ['HenID','PenID','CLASS','R-Pen','InitialStartDate','early_death','Treatment']
     df_daily = pd.merge(df_daily, df_FB_[li_var_hen], on=['HenID'], how='left')
     #add pen info and match with day info in order to remove the night that we should not use
     #keep all li_var_hen, as some night might exist, while some days not due to disturbances, so we need to add it here
@@ -3195,28 +3178,30 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     ######## remove dates linked to specific hens on the day & add tags
     #add the tag separately: per date on the day (to lazy for the night now, and probably no need)
     df_FB_daily = FB_daily(config)
-    #df_FB_daily['TagID'] = df_FB_daily['TagID'].map(lambda x: 'tag_'+str(x))
-    #df_FB_daily['HenID'] = df_FB_daily['HenID'].map(lambda x: 'hen_'+str(x))
     df_daily['date'] = df_daily['level'].map(lambda x: dt.datetime(x.year,x.month,x.day))
     print(df_daily.shape)
-    df_daily = pd.merge(df_daily, df_FB_daily.filter(['HenID','TagID','date','FocalLegringName'], axis=1), on=['date','HenID'], how='inner') 
+    df_daily = pd.merge(df_daily, df_FB_daily.filter(['HenID','TagID','date','FocalLegringName'], axis=1), on=['date','HenID'],
+                        how='inner') 
     print(df_daily.shape)
     df_daily.drop(['date'], axis=1, inplace=True)
     #note that : how=inner in order to oly have records that are correctly associated to a chicken
-    #how!= left as we need to remove some records if the system was resetting etc, so we dont want to keep the tracking data of tags that were not working correctly on that day
-
+    #how!= left as we need to remove some records if the system was resetting etc, so we dont want to keep the tracking data of tags 
+    #that were not working correctly on that day
+    
+    ####################################################################################################################################
     ######## remove dates linked to specific system
     print('-------------- Lets remove unwanted dates at PENS level')
-    df_daily['date_2remove_penper'] = df_daily.apply(lambda x: x['level'] in df_day[df_day[str(x['PenID'])+'_Day']==0]['Date'].tolist(), 
-    axis=1)
+    df_daily['date_2remove_penper'] = df_daily.apply(lambda x: x['level'] in df_day[df_day[x['PenID'].split('pen')[-1]+'_Day']==0]['Date'].tolist(), axis=1)
     x0 = df_daily.shape[0]
     df_daily = df_daily[~df_daily['date_2remove_penper']]
     print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
                 df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))   
-    
+
+    ####################################################################################################################################
     ######## remove dates linked to specific nights and pens
-    df_ts_night['night_2remove'] = df_ts_night.apply(lambda x: x['level'] in df_day[df_day[str(x['PenID'])+'_Night']==0]['Date'].tolist(),
-                                              axis=1)
+    #hen 129 in pen 8 was on focalbird list but always with non-working days, which will create nan in th pen. So remove it
+    df_ts_night = df_ts_night[~df_ts_night['PenID'].isnull()] 
+    df_ts_night['night_2remove'] = df_ts_night.apply(lambda x: x['level'] in df_day[df_day[x['PenID'].split('pen')[-1]+'_Night']==0]['Date'].tolist(),axis=1)
     df_ts_night = df_ts_night[~df_ts_night['night_2remove']]
     df_ts_night.drop(['night_2remove'],inplace=True,axis=1)
     #now we can join days and night info: will induce some rows with all the daily var beeing nan, but the night variable having value
@@ -3232,6 +3217,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     print('All the night variables are: ', df_ts_night.columns)
     print([c for c in df_daily.columns if str(c).startswith('night_level')])
     
+    ####################################################################################################################################
     ######## remove dates of tags when they were not giving deviceupdate regularly or before 13.10.2020 as beforehand we couldnt 
     #control for it
     print('-------------- Lets remove dates of tags when they were not giving deviceupdate correctly')
@@ -3245,25 +3231,34 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     df_daily = df_daily[(df_daily['date_2keep'])|(df_daily['level']<=dt.datetime(2020,10,12))]
     print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
                 df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))  
-        
-    ######## remove the 30.09.2020 for the tags that still had no transition from before the light went on 
+    
+    ###################################################################################################################################    
+    ######## remove all the 30.09.2020 for the tags that still had no transition from before the light went on 
     print('-------------- Lets remove the 30.09.2020 for the tags that still had no transition from before the light went on ')
     x0 = df_daily.shape[0]
     df_daily = df_daily[~((df_daily['level']==dt.datetime(2020,9,30))&(df_daily['verification_daily_total_duration']!=28800))]
+    df_daily = df_daily[df_daily['level']>dt.datetime(2020,9,29)]
     print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
                 df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))
     
+    ####################################################################################################################################
     ######## more generally remove all (dates,tagid) with not all seconds tracked (e.g. first day an animal is tracked)
     print('-------------- Lets remove all (dates,tagid) with not all seconds tracked (e.g. first day an animal is tracked), and no night variable')
     df_daily['nbr_h_per_day'] = df_daily['level'].map(lambda x: dico_night_hour[correct_key(x,dico_night_hour)]['nbr_hour'])
     df_daily['correct_amount_of_hour'] = df_daily.apply(lambda x: x['verification_daily_total_nbr_hour']==x['nbr_h_per_day'], axis=1)
     x0 = df_daily.shape[0]
-    #when there is only the night variables and not the day, then we have nan in all and is_correct_amount_time is false. but we
-    #want to keep the night variable :)
-    df_daily = df_daily[~((~df_daily['correct_amount_of_hour'])&(~df_daily['Total_number_transition'].isnull()))]
+    #as we wont really use the night, lets just remove all the time that corret_maounf of our is incorrect, altought it might remove some correct nights (but otherwise we should keep nights in a separate table
+    df_daily = df_daily[df_daily['correct_amount_of_hour']]
     print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
                 df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))
     
+    ######## remove days with only the night and not the days variables, as due to flickering we wotn really use night
+    print('-------------- remove days with only the night and not the days variables, as due to flickering we wotn really use night')
+    x0 = df_daily.shape[0]
+    df_daily = df_daily[~df_daily['Total_number_transition'].isnull()]
+    print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
+                df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))    
+            
     ######## remove all above the last official tracked day
     print('-------------- Lets remove all above the last official tracked day')
     x0 = df_daily.shape[0]
@@ -3287,7 +3282,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     ########################################################
     #add DOA; DIB
     ########################################################    
-    df_daily['DOA'] = df_daily['level'].map(lambda x: (x-dt.datetime(2020,6,3)).days) 
+    df_daily['DOA'] = df_daily['level'].map(lambda x: (x-config.birth_date).days) 
     df_daily['WOA'] = df_daily['DOA'].map(lambda x: math.ceil(x/7))
     df_daily['DIB'] = df_daily['DOA'].map(lambda x: x-118)
     df_daily['WIB'] = df_daily['DIB'].map(lambda x:  math.ceil(x/7))

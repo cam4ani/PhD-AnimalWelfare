@@ -1,4 +1,5 @@
 
+Sample of the data: "Sample-Traking-Data.csv"
 
 ------------------------------------------ Decision tree classifiers
 1_PreprocessedTraining&TestingData.ipynb: merge the records metadata with the video analysis. output: "id_run+InputCleaning.csv"

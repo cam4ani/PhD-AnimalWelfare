@@ -349,6 +349,7 @@ li_cont_select = ['signalstrength', 'signalstzone2','duration_bounded_mn','next_
 #duplicate of li_cont_select, all the binary ones
 li_bin = ['next2zone==Zone','previous2zone==Zone','zone3_match_exist']
 li_cat_select = ['Trackingsystem_Zone','zone2_match','previous1_zone','next1_zone','system']  #PenID
+
 #not pen, as we may not have enough data for this and we dont want to over fit (we want this to be more general
 
 
