@@ -2567,7 +2567,7 @@ def entropy_compare_session(h, SessionID1, SessionID2, config, title, last_folde
     
     
 def is_day(x, dico_):
-    '''from a timestamp value x, and the dico_nighthour parameter, it will output true if its during the day, false otherwise'''
+    '''from a timestamp value x, and the dico_night_hour parameter, it will output true if its during the day, false otherwise'''
     if max(dico_.keys())<dt.datetime(x.year,x.month,x.day,0,0,0):
         print('ERROR: your \"dico_nighthour\" parameter does not include information for the date: %s'%str(x))
         sys.exit()
@@ -2592,7 +2592,7 @@ def nbr_device_info(x):
     else:
         return [np.nan]    
     
-def is_WG_open(x, dico_, date_first_opening_WG, close_dates, epsi_open=0, epsi_close=20):
+def is_WG_open_old(x, dico_, date_first_opening_WG, close_dates, epsi_open=0, epsi_close=20):
     '''from a timestamp value x, the dico_ (typically: dico_garden_opening_hour) and the date_first_opening_WG parameters, 
     it will output true if the WG is open, false otherwise.
     With the epsi_* parameters it allows to be more flexible with the true time of opening/closing'''
@@ -2613,6 +2613,31 @@ def is_WG_open(x, dico_, date_first_opening_WG, close_dates, epsi_open=0, epsi_c
                (dt.datetime(1,1,1,x.hour,x.minute,0)<(dt.datetime(1,1,1, dico_[m]['end_h'], dico_[m]['end_m'],0)+\
                                                        dt.timedelta(minutes=epsi_close)))
     
+def is_WG_open(x, config, epsi_open=0, epsi_close=20):
+    '''from a timestamp value x, the dico_ (typically: dico_garden_opening_hour) and the date_first_opening_WG parameters, 
+    it will output true if the WG is open, false otherwise.
+    With the epsi_* parameters it allows to be more flexible with the true time of opening/closing'''
+    
+    dico_ = config.dico_garden_opening_hour
+    date_first_opening_WG = config.date_first_opening_WG
+    close_dates = config.close_dates
+    
+    #if no record return nan
+    if pd.isnull(x)==True:
+        return(np.nan)
+    if (x<date_first_opening_WG) | (x in close_dates):
+        return(False)
+    if max(dico_.keys())<dt.datetime(x.year,x.month,x.day,0,0,0):
+        print('ERROR: your \"dico_garden_opening_hour\" parameter does not include information for the date: %s'%str(x))
+        sys.exit()
+    else:
+        #take info (i.e. values) of the dico_ key that represent the smallest date among all the date>=x:
+        m = min([d for d in dico_.keys() if d>=dt.datetime(x.year,x.month,x.day,0,0,0)])
+        #is the timestamp bigger than the first day hour-epsi_open & smaller than the latest day hour+epsi_close:
+        return (dt.datetime(1,1,1,x.hour,x.minute,0)>=(dt.datetime(1,1,1,dico_[m]['start_h'], dico_[m]['start_m'],0)-\
+                                                       dt.timedelta(minutes=epsi_open))) & \
+               (dt.datetime(1,1,1,x.hour,x.minute,0)<(dt.datetime(1,1,1, dico_[m]['end_h'], dico_[m]['end_m'],0)+\
+                                                       dt.timedelta(minutes=epsi_close)))
     
     
 def is_ts_before_MN_opening(x, dico_, MN, date_first_opening_WG, close_dates, epsi_open=0):
