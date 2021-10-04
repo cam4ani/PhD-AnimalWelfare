@@ -2613,6 +2613,14 @@ def is_WG_open_old(x, dico_, date_first_opening_WG, close_dates, epsi_open=0, ep
                (dt.datetime(1,1,1,x.hour,x.minute,0)<(dt.datetime(1,1,1, dico_[m]['end_h'], dico_[m]['end_m'],0)+\
                                                        dt.timedelta(minutes=epsi_close)))
     
+def nbrh_WG_open(dico_garden_opening_hour,x):
+    #take info (i.e. values) of the dico_ key that represent the smallest date among all the date>=x:
+    m = min([d for d in dico_garden_opening_hour.keys() if d>=dt.datetime(x.year,x.month,x.day,0,0,0)])
+    v = dico_garden_opening_hour[m]
+    return ((v['end_h'] - v['start_h'])*60 - v['start_m'] + v['end_m'])/60   
+#small example
+#nbrh_WG_open(config,dt.datetime(2020,10,10)) #4h30 
+    
 def is_WG_open(x, config, epsi_open=0, epsi_close=20):
     '''from a timestamp value x, the dico_ (typically: dico_garden_opening_hour) and the date_first_opening_WG parameters, 
     it will output true if the WG is open, false otherwise.
