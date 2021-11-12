@@ -90,7 +90,7 @@ dico_window = {5:12, 10:6, 15:4, 20:3, 30:2}
 max_date_adaptability = dt.datetime(2020,11,22)
 
 #day of birth to compute day of age
-birth_date = dt.datetime(2020,6,3)
+birth_date = dt.datetime(2020,6,3) #DOA 1 = 2020-6-4
 
 #nestbox time:
 #Nestbox Time 16:00 close / 02:05 open. 

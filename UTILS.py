@@ -2037,14 +2037,25 @@ def vertical_travel_distance(li):
     v = [x[0] for x in itertools.groupby(li)]
     #replace '3_zone" by an integer
     v = [int(i.split('_')[0]) for i in v]
-    #remove WG as horizontal distance
-    v = [i for i in v if i!=1]
+    #replace WG (zone 1) by zone 2 (cant be removed earlier as 3-1-3 would ber educed to 0 transtions for example)
+    v = [int(str(i).replace('1','2')) for i in v]
     li_len = [abs(v[i+1]-v[i]) for i in range(0,len(v)-1)]
     return(sum(li_len))
 #small example
-#li = [1,1,1,1,1,1,2,2,2,3,4,4,4,4,2,2,2,2,4,4,4,4]
-#vertical_travel_distance(li) #--> 7 (v=[2, 3, 4, 2, 4], li_len=[1,1,2,2])
-    
+#li = ['1_Zone','1_Zone','1_Zone','1_Zone',
+#      '2_Zone','2_Zone','2_Zone',
+#      '3_Zone',
+#      '4_Zone','4_Zone','4_Zone','4_Zone',
+#      '2_Zone','2_Zone','2_Zone','2_Zone',
+#      '4_Zone','4_Zone','4_Zone','4_Zone']
+#print(vertical_travel_distance(li)) #--> 6 (v=[1, 2, 3, 4, 2, 4], remove wg: v=[2, 3, 4, 2, 4], li_len=[1,1,2,2])
+#li = ['1_Zone','1_Zone','1_Zone','1_Zone',
+#      '2_Zone','2_Zone','2_Zone',
+#      '3_Zone',
+#      '4_Zone','4_Zone','4_Zone','4_Zone',
+#      '1_Zone','1_Zone',
+#      '4_Zone','4_Zone','4_Zone','4_Zone']
+#vertical_travel_distance(li) #6    
     
 def stats_list(li_en_shift):
     dico = {}
@@ -3181,7 +3192,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     ########################################################
     #### WG
     ########################################################    
-    #went out after its 15mn opening?
+    #went out after its Xmn opening?
     df_daily['in_WG_'+str(WG_after_opening_mn)+'mnAfterOpening'] = df_daily['FirstTimestamp_1_Zone'].map(lambda x: is_ts_before_MN_opening(x, dico_garden_opening_hour, WG_after_opening_mn, date_first_opening_WG, close_dates))
     #if no first entry in wintergarten today, then it did not went out at all
     df_daily['in_WG_'+str(WG_after_opening_mn)+'mnAfterOpening'] = df_daily['in_WG_'+str(WG_after_opening_mn)+'mnAfterOpening'].fillna(False)  
