@@ -343,6 +343,7 @@ def preprocessing_Origins(paths, config, save=True, dodevice=True):
     path_extracted_data = config.path_extracted_data
     id_run = config.id_run   
     dico_matching = config.dico_matching
+    starting_date = config.starting_date
     
     #create path to save extracted data/info if not existing
     if not os.path.exists(path_extracted_data):
@@ -354,7 +355,8 @@ def preprocessing_Origins(paths, config, save=True, dodevice=True):
     li_df = []
     for path_ in paths:
         df = pd.read_csv(path_, sep=';',names=['Timestamp','TagSerialNumber','TagID','Zone','systemgantnerid','useless_zone',
-                                               'signalstrength','zone2','signalstzone2','zone3','signalstrzone3','zone4','signalstrzone4']) 
+                                               'signalstrength','zone2','signalstzone2','zone3','signalstrzone3','zone4','signalstrzone4'],
+                        parse_dates=['Timestamp'], dayfirst=True) 
         df['data_path'] = path_
         df['system'] = path_.split('Barn 4 Pen ')[1].split('\\')[0]
         log_name = path_.split('\\')[-1].split('.')[0]
@@ -368,14 +370,22 @@ def preprocessing_Origins(paths, config, save=True, dodevice=True):
         li_df.append(df)
     df = pd.concat(li_df)
     
+    df = df[~df['TagSerialNumber'].isnull()]
     #### make sure about the type
-    df['Timestamp'] = df['Timestamp'].map(lambda x: dt.datetime.strptime(x, "%d.%m.%Y %H:%M:%S")) #faster than parse_dates
-    df['time'] = df['Timestamp'].map(lambda x: dt.datetime.time(x))
-    df['date'] = df['Timestamp'].map(lambda x: dt.datetime(x.year,x.month,x.day))
-    df['Zone'] = df['Zone'].map(lambda x: x.strip())
-    df['TagID'] = df['TagID'].map(int).map(str)    
-    df['TagID'] = df['TagID'].map(lambda x: 'tag_'+str(x))
-    
+    try:
+        #df = df[df['Timestamp']!='1']
+        #df['Timestamp'] = df['Timestamp'].map(lambda x: dt.datetime.strptime(x, "%d.%m.%Y %H:%M:%S")) #faster than parse_dates
+        df['time'] = df['Timestamp'].map(lambda x: dt.datetime.time(x))
+        df['date'] = df['Timestamp'].map(lambda x: dt.datetime(x.year,x.month,x.day))
+        #remove data before the starting date
+        df = df[df['date']>=starting_date]
+        df['Zone'] = df['Zone'].map(lambda x: x.strip())
+        df['TagID'] = df['TagID'].map(int).map(str)    
+        df['TagID'] = df['TagID'].map(lambda x: 'tag_'+str(x))
+    except Exception as e:
+        print(e)
+        return df
+        
     ####################################################################################
     ####################### Add a unique HenID to tracking data ########################
     ####################################################################################  
