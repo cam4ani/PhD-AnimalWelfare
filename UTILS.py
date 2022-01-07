@@ -65,7 +65,7 @@ import seaborn as sns
 
 #compute simple similarity between two images
 from skimage import measure
-from skimage.measure import compare_ssim
+#from skimage.measure import compare_ssim
 #other image package
 from PIL import Image
 import skimage.draw
@@ -73,7 +73,9 @@ import imutils
 
 #videos
 import imageio
-from skimage import color
+#from skimage import color #kernel die
+from colorsys import hls_to_rgb
+
 
 #models
 from sklearn.preprocessing import MinMaxScaler
@@ -129,7 +131,6 @@ def findDay(date):
     born = date.weekday() 
     return (calendar.day_name[born]) 
 
-from colorsys import hls_to_rgb
 def rainbow_color_stops(n=10, end=2/3):
     '''tken frm internet: list of distinct color in gradient of form: (1.0, 0.6666666666666666, 0.0)'''
     return [ hls_to_rgb(end * i/(n-1), 0.5, 1) for i in range(n) ]
@@ -356,12 +357,15 @@ def preprocessing_Origins(paths, config, save=True, dodevice=True):
     for path_ in paths:
         df = pd.read_csv(path_, sep=';',names=['Timestamp','TagSerialNumber','TagID','Zone','systemgantnerid','useless_zone',
                                                'signalstrength','zone2','signalstzone2','zone3','signalstrzone3','zone4','signalstrzone4'],
-                        parse_dates=['Timestamp'], dayfirst=True) 
+                        dayfirst=True) 
         df['data_path'] = path_
         df['system'] = path_.split('Barn 4 Pen ')[1].split('\\')[0]
         log_name = path_.split('\\')[-1].split('.')[0]
         df['log_file_name'] = log_name
         df['ts_order'] = df.index.copy() 
+        df = df[:-1] #remove last row: often wrong
+        #faster but also works with the fact that soemetimes we have strings at the end of the column than parse_dates
+        df['Timestamp'] = df['Timestamp'].map(lambda x: dt.datetime.strptime(x, "%d.%m.%Y %H:%M:%S")) 
         v = df.shape[0]
         if v<80000:
             print_color((('log: %s has '%log_name,'black'),(v,'red'),(' rows','black')))
@@ -372,19 +376,13 @@ def preprocessing_Origins(paths, config, save=True, dodevice=True):
     
     df = df[~df['TagSerialNumber'].isnull()]
     #### make sure about the type
-    try:
-        #df = df[df['Timestamp']!='1']
-        #df['Timestamp'] = df['Timestamp'].map(lambda x: dt.datetime.strptime(x, "%d.%m.%Y %H:%M:%S")) #faster than parse_dates
-        df['time'] = df['Timestamp'].map(lambda x: dt.datetime.time(x))
-        df['date'] = df['Timestamp'].map(lambda x: dt.datetime(x.year,x.month,x.day))
-        #remove data before the starting date
-        df = df[df['date']>=starting_date]
-        df['Zone'] = df['Zone'].map(lambda x: x.strip())
-        df['TagID'] = df['TagID'].map(int).map(str)    
-        df['TagID'] = df['TagID'].map(lambda x: 'tag_'+str(x))
-    except Exception as e:
-        print(e)
-        return df
+    df['time'] = df['Timestamp'].map(lambda x: dt.datetime.time(x))
+    df['date'] = df['Timestamp'].map(lambda x: dt.datetime(x.year,x.month,x.day))
+    #remove data before the starting date
+    df = df[df['date']>=starting_date]
+    df['Zone'] = df['Zone'].map(lambda x: x.strip())
+    df['TagID'] = df['TagID'].map(int).map(str)    
+    df['TagID'] = df['TagID'].map(lambda x: 'tag_'+str(x))
         
     ####################################################################################
     ####################### Add a unique HenID to tracking data ########################

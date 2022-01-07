@@ -88,6 +88,7 @@ penalty = 0
 #window: we set up so that the animal can have up to 1h of movement wihtout penality
 dico_window = {5:12, 10:6, 15:4, 20:3, 30:2}
 max_date_adaptability = dt.datetime(2020,11,22)
+min_date_drivers = dt.datetime(2020,11,14) #light schedule finished to change
 
 #day of birth to compute day of age
 birth_date = dt.datetime(2020,6,3) #DOA 1 = 2020-6-4
