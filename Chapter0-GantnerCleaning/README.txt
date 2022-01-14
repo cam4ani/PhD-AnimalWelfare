@@ -1,10 +1,9 @@
 ------------------------------------------ Datasets
 ------------------- 1
-Sample of the data: "Sample-Traking-Data.csv"
+"Sample-Traking-Data.csv": Sample of the data
 
 ------------------- 2
-Video observations results for both training and tst dataset: "Video_Observation_training&testing.csv".
-with the following annotation code:
+"Video_Observation_training&testing.csv": Video observations results for both training and tst dataset,with the following annotation code:
     -1: can't be sure (e.g. not clear on camera)
     1: CR - correct record cf terminology described in paper
     0: WR - wrong record cf terminology described in paper
@@ -26,11 +25,11 @@ Training dataset further details: a total of 46 tags is involved in the training
 
 2_Classifier-Catboost_finetuning.ipynb: use "id_run+InputCleaning.csv" as input and fine tune the hyperparamters from Catboost
 
-3_ClassifierComparison&Selection&Performance.ipynb: compare and train final selected model and evaluate the performance of selected model
+3_ClassifierComparison&Selection&Performance.ipynb: compare and train final selected model and evaluate the performance of selected model on  test dataset
 
 
 ------------------------------------------ Cleaning method comparison
-4_1CleaningMethodsComparison_Computation.ipynb: compute the performance measurement on each of the frou dataset (when compared to the video observation), and output the following files: 
+4_1CleaningMethodsComparison_Computation.ipynb: compute the performance measurement on each of the dataset (when compared to the video observation), and output the following files: 
     "1secTS\1secTimeSeries_ALL_+str(BatchID)+.csv": 1sec categorical time series for each method. one file per batch
     "1secTimeSeries_reliability.csv": the 1sec ts over all batches (used to assess all the methods performance)
     "reliability_transition.csv" the transitions over all batches (used to assess all the methods performance)
@@ -42,7 +41,9 @@ Training dataset further details: a total of 46 tags is involved in the training
 ------------------------------------------ Impact of cleaning on analysis
 5_1Cleaning&RawdataComparison-createVariables.ipynb: clean the unprocessed records and extract variables from the cleaned data. Main output file: 'ML-method_daily_ALL_variables.csv'
 
-5_2Cleaning&RawdataComparison.ipynb: Using 'ML-method_daily_ALL_variables.csv', create visuals and compute measures to asess teh difference between unprocessed and cleaned dataset
+5_2Cleaning&RawdataComparison-EstimatedErrorRate.ipynb: Using 'ML-method_daily_ALL_variables.csv', create visuals and compute estimated error rate
+
+5_3Factors&estimatederror.ipynb: Estimated error rate association with environmental factors
 
 
 
