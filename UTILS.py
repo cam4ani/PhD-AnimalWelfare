@@ -220,13 +220,13 @@ def FB_process(config):
     path_FocalBird = config.path_FocalBird
     date_max = config.date_max 
     
-    df_FB = pd.read_csv(path_FocalBird, sep=';', parse_dates=['StartDate','EndDate','InitialStartDate'], dayfirst=True, encoding='latin')
+    df_FB = pd.read_csv(path_FocalBird, sep=',', parse_dates=['StartDate','EndDate','InitialStartDate'], dayfirst=True, encoding='latin')
     #fill end date to today+1 for the birds which we dont know when is there end date (+1: so that today is taken into account)
     df_FB['EndDate'].fillna(date_max+dt.timedelta(days=1), inplace=True)
     df_FB['TagID'] = df_FB['TagID'].map(int).map(str)  
     df_FB['TagID'] = df_FB['TagID'].map(lambda x: 'tag_'+str(x)) 
-    df_FB['PenID'] = df_FB['PenID'].map(int).map(str)
-    df_FB['PenID'] = df_FB['PenID'].map(lambda x: 'pen'+str(x))
+    #df_FB['PenID'] = df_FB['PenID'].map(int).map(str)
+    #df_FB['PenID'] = df_FB['PenID'].map(lambda x: 'pen'+str(x))
     df_FB['HenID'] = df_FB['HenID'].map(int).map(str)
     df_FB['HenID'] = df_FB['HenID'].map(lambda x: 'hen_'+str(x)) 
 
@@ -249,7 +249,7 @@ def FB_process_hen(config):
     df_FB_['CLASS'] = df_FB_['CLASS'].map(lambda x: x[0] if len(x)==1 else None)
     df_FB_[li] = df_FB_[li].applymap(lambda x: x[0] if len(x)==1 else np.nan)
     df_FB_[li_weight] = df_FB_[li_weight].applymap(lambda x: float(x) if '+70 -30' not in str(x) else np.nan)
-    df_FB_['Treatment'] = df_FB_['PenID'].map(lambda x: 'OFH' if x in ['pen3','pen5','pen9','pen11'] else 'TRAN')
+    df_FB_['Treatment'] = df_FB_['PenID'].map(lambda x: 'OFH' if x in ['pen3','pen5','pen9','pen11',3,5,9,11] else 'TRAN')
     df_FB_['early_death'] = df_FB_['early_death'].fillna(0).replace(2,1) #2 means not sure
     #save as a focalbirds csv
     df_FB_.to_csv(os.path.join(config.path_extracted_data, config.id_run+'df_FOCALBIRDS.csv'), sep=';', index=False)
@@ -363,10 +363,10 @@ def preprocessing_Origins(paths, config, save=True, dodevice=True):
         log_name = path_.split('\\')[-1].split('.')[0]
         df['log_file_name'] = log_name
         df['ts_order'] = df.index.copy() 
-        df = df[:-1] #remove last row: often wrong
         #faster but also works with the fact that soemetimes we have strings at the end of the column than parse_dates
         df['Timestamp'] = df['Timestamp'].map(lambda x: dt.datetime.strptime(x, "%d.%m.%Y %H:%M:%S")) 
         v = df.shape[0]
+        print(path_)
         if v<80000:
             print_color((('log: %s has '%log_name,'black'),(v,'red'),(' rows','black')))
         else:
@@ -375,13 +375,14 @@ def preprocessing_Origins(paths, config, save=True, dodevice=True):
     df = pd.concat(li_df)
     
     df = df[~df['TagSerialNumber'].isnull()]
-    #### make sure about the type
+    #### make sure about the type       
+    df = df[:-1] #remove last row: often wrong
     df['time'] = df['Timestamp'].map(lambda x: dt.datetime.time(x))
     df['date'] = df['Timestamp'].map(lambda x: dt.datetime(x.year,x.month,x.day))
     #remove data before the starting date
     df = df[df['date']>=starting_date]
     df['Zone'] = df['Zone'].map(lambda x: x.strip())
-    df['TagID'] = df['TagID'].map(int).map(str)    
+    #df['TagID'] = df['TagID'].map(int).map(str)     #ValueError: invalid literal for int() with base 10: '020015BC' sometimes mixed
     df['TagID'] = df['TagID'].map(lambda x: 'tag_'+str(x))
         
     ####################################################################################
@@ -1721,6 +1722,11 @@ def list_of_zones(li):
 #li = [1,1,1,1,2,2,2,3,3,3,4,4,2,2,2,2,4,1,2]
 #list_of_zones(li) #[1, 2, 3, 4, 2, 4, 1, 2]
 
+def list_Z4(li):
+    return [1 if '4' in str(x) else 0 for x in li]
+#small example
+#li = [1,1,1,1,2,2,2,3,3,3,4,4,2,2,2,2,4,1,2]
+#list_of_Z4(li) #[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0]
 
 #accounting for all the transitional zones
 def dict_of_zones_appearances_with_transitionalZones(li):
@@ -1784,12 +1790,15 @@ def max_duration_zones(li):
     else:
         print('several max-duration-zone')
         return(v)
+    
+def duration_Z5(li):
+    '''function to find time spend in Z5'''
+    return sum(['5' in str(x) for x in li])
 
 ############statistics on duration
 #where for li = [1,1,1,1,2,2,2,3,3,3,4,4,2,2,2,2] we get if nbr_sec=3: v= [12, 9, 9, 6, 12] which we then aggreagate (min, max, avg,...)
 def list_of_durations(li, nbr_sec):
     return [len(list(x[1]))*nbr_sec for x in itertools.groupby(li)]
-
 
 def zone_duration(li,nbr_sec):
     li_dur = list_of_durations(li,1)
@@ -1857,6 +1866,109 @@ def dico_duration_stats(li, nbr_sec):
 # [2, 2, 2, 2],
 # [1, 1, 1, 1]]
 
+
+############################ Food related behavior
+#Food related behavior: (zone 3 and zone 5?): (DZ3FR/DFR&inside - DZ3FNR/DFNR&inside) /(DZ3FR/DFR&inside + DZ3FNR/DFNR&inside). birds that stays in the top tier to always for instance should have ~0 issue: two zones
+def food_related_behavior(li_Z, config, fake_sec=0):
+    '''fake_sec allows to repeatability of this behavior with ne having random/nonfood related timing. We will be moving the list of second 0/1:feeding/not feeding by fake_sec. fake_sec should be negative if we want to move the feeding time to earlier timestamps. FOr example, fake_sec of 60*2 means that we will pretend the food is delivered 2mn later so we will add 0 at begining and cut the last ones'''
+    #initialise parameters
+    li_FR = config.li_FR
+    li_FNR = config.li_FNR
+    
+    #add fake_sec
+    if fake_sec>0:
+        li_FR =  list([0] * fake_sec)+li_FR[:-fake_sec]  
+        li_FNR =  list([0] * fake_sec)+li_FNR[:-fake_sec]  
+    if fake_sec<0:
+        li_FR =  li_FR[abs(fake_sec):] + list([0] * fake_sec)
+        li_FNR =  li_FNR[abs(fake_sec):] + list([0] * fake_sec)
+        
+    #from 1_zone to 1
+    li_Z = [int(i.split('_')[0]) for i in li_Z]
+      
+    li_foodrunning_birdinside = [int(f==1)*int(z>1) for f, z in zip(li_FR, li_Z)]
+    #print(li_foodrunning_birdinside)
+    
+    li_foodNOTrunning_birdinside = [int(fnr==1)*int(z>1) for fnr, z in zip(li_FNR, li_Z)]
+    #print(li_foodNOTrunning_birdinside)
+
+    li_foodruning_birdZ3Z5 = [int(f==1)*int(z in [3,5]) for f, z in zip(li_FR, li_Z)]
+    #print(li_foodruning_birdZ3Z5)
+
+    li_foodNOTruning_birdZ3Z5 = [int(fnr==1)*int(z in [3,5]) for fnr, z in zip(li_FNR, li_Z)]
+    #print(li_foodNOTruning_birdZ3Z5)
+    
+    if sum(li_foodrunning_birdinside)==0:
+        return np.nan
+    
+    if sum(li_foodNOTrunning_birdinside)==0:
+        return -9999
+    n = sum(li_foodruning_birdZ3Z5)/sum(li_foodrunning_birdinside) - sum(li_foodNOTruning_birdZ3Z5)/sum(li_foodNOTrunning_birdinside)
+    p = sum(li_foodruning_birdZ3Z5)/sum(li_foodrunning_birdinside) + sum(li_foodNOTruning_birdZ3Z5)/sum(li_foodNOTrunning_birdinside)
+    #print(n, p)
+    
+    #if never went in the Z3&Z5 then return 0 then division by 0 issue --> return 0 i.e. neutral
+    if p==0:
+        return(0)
+    return n/p
+#li_ZS = [1,1,1,1,2,2,2,3,3,3,1,4,2,2,2,2,5,5,5,4,4,4]
+#li_FR = [0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0]
+#print(food_related_behavior(li_FR=li_FR, li_Z=li_ZS, config=config))-0.11428571428571432 0.6857142857142857 --> -0.17
+#li_ZS = [1,1,1,1,2,2,2,3,3,3,3,3,3,3,2,2,2,2,2,4,4,4]
+#li_FR = [0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0]
+#print(food_related_behavior(li_FR=li_FR, li_Z=li_ZS, config=config))0.65 0.85 --> 0.7647058823529412
+
+############################ nestboxes related behavior
+def nestboxes_related_behavior(li, config, li_LT=[], li_HT=[]):
+    '''function that compute a proxi for nestbox zone usgae: morning vs afternoon. values> means that you have an afternoon 
+    usage of the nestbox (maybe hidding), while <0 you have a morning usage of nestboxes (maybe laying)'''
+    
+    #initialise parameters
+    li_LT = config.li_LT
+    li_HT = config.li_HT
+    
+    #from 1_zone to 1
+    li = [int(i.split('_')[0]) for i in li]
+    
+    li_layingtime_birdinZ4 = [int(lt==1)*int(z==4) for lt, z in zip(li_LT, li)]    
+    li_hidingtime_birdinZ4 = [int(ht==1)*int(z==4) for ht, z in zip(li_HT, li)]    
+    p = sum(li_layingtime_birdinZ4)/sum(li_LT)+sum(li_hidingtime_birdinZ4)/sum(li_HT)
+    n = sum(li_layingtime_birdinZ4)/sum(li_LT)-sum(li_hidingtime_birdinZ4)/sum(li_HT)
+    #if never went in the nestbox then return 0 then division by 0 issue --> return 0 i.e. neutral nor afternoon nor morning:
+    #i.e. afternon and morning have same behavior
+    if p==0:
+        return(0)
+    return n/p
+#small verifications
+#li_ZS = [1,1,4,4,4,1,1,2,2,2,3,3,3,1,4,2,2,2,2,5,5,5,4,4,4]
+#li_LT = [1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+#li_HT = [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1]
+#print(nestboxes_related_behavior(li=li_ZS, config=config, li_LT=li_LT, li_HT=li_HT)) #(3/9 - 4/12)/(3/9 + 4/12) = 0)
+#li_ZS = [1,1,1,1,1,1,1,2,2,2,3,3,3,1,4,2,2,2,2,5,5,5,4,4,4]
+#li_LT = [1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+#li_HT = [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1]
+#print(nestboxes_related_behavior(li=li_ZS, config=config, li_LT=li_LT, li_HT=li_HT)) #(0/9 - 4/12)/(0/9 + 4/12) = -1)
+#li_ZS = [1,1,1,1,1,1,1,2,2,2,3,3,3,1,1,2,2,2,2,5,5,5,1,1,1]
+#li_LT = [1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+#li_HT = [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1]
+#print(nestboxes_related_behavior(li=li_ZS, config=config, li_LT=li_LT, li_HT=li_HT)) #(0/9 - 0/12)/(0/9 + 0/12) = 0)
+#li_ZS = [4,4,4,4,4,1,1,2,2,2,3,3,3,1,4,2,2,2,2,5,5,5,4,4,4]
+#li_LT = [1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+#li_HT = [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1]
+#print(nestboxes_related_behavior(li=li_ZS, config=config, li_LT=li_LT, li_HT=li_HT)) #(5/9 - 4/12)/(5/9 + 4/12) = 0.25)
+
+def mid_cum_Z4_sec(li):
+    li = list(np.cumsum([int('4' in str(x)) for x in li]))
+    m = int(max(li)/2) #round down 
+    if m>0:
+        ind_ = li.index(m) + 1 #+1 for index 0
+        return(ind_)
+    #if never went in nestboxes then put np.nan
+    return np.nan
+#small example
+#li = [1,1,4,4,4,1,1,2,2,2,3,3,3,1,4,2,2,2,2,5,5,5,4,4,4]
+#mid_cum_Z4(li) #5
+
 ############### missing zones (flying)
 def li_missingZone_mvtPerc_DU(li,nbr_sec):
     li_z_d_pzd = list_tuple_zone_dur_previousZoneDiff(li, nbr_sec)
@@ -1870,20 +1982,16 @@ def li_missingZone_mvtPerc_DU(li,nbr_sec):
 #li = [1,1,1,1,1,2,2,2,2,3,3,3,2,2,2,2,4,4,4,2,2,2,2,1,1,1,1]
 #print(li_missingZone_mvtPerc_DU(li,1)) 
 #(16.666666666666664, 16.666666666666664, 7)
-
 #li = [1,2,3,2,4,2,1]
 #print(li_missingZone_mvtPerc_DU(li,1)) #, 1/6*100=16,66 
 #(16.666666666666664, 16.666666666666664, 7)
-
 #li = [1,2,3,2,4,3,2,1] #lenght = 7, 1/7*100=14
 #print(li_missingZone_mvtPerc_DU(li,1)) 
 #(0.0, 14.285714285714285, 8)
-
 #li = [1,2,3,2,4,1] #lenght = 7, 1/5*100=40
 #print(li_missingZone_mvtPerc_DU(li,1)) 
 #(20.0, 20.0, 6)
 #4 to 1 or 4 to 2 count the same, it count as one flying-mvt. The percenatge is taken over the entire nbr of transitions
-
 
 ############### chaotic transition
 def list_tuple_zone_dur_previousZoneDiff(li, nbr_sec):
@@ -2391,7 +2499,7 @@ def TimeSeriesPlot_1row1day(df, config, save=True, timestamp_name='New_Timestamp
 
     #add basics hens info
     #download info on henID associtation to (TagID,date) 
-    df_FB = pd.read_csv(path_FocalBird, sep=';', parse_dates=['StartDate','EndDate'], dayfirst=True, encoding='latin') 
+    df_FB = pd.read_csv(path_FocalBird, sep=',', parse_dates=['StartDate','EndDate'], dayfirst=True, encoding='latin') 
     df_FB['HenID'] = df_FB['HenID'].map(lambda x: 'hen_'+str(x))
     df_FB = df_FB[df_FB['ShouldBeExcluded']!='yes']
     df_FB['EndDate'].fillna(date_max+dt.timedelta(days=1), inplace=True)
@@ -2437,154 +2545,6 @@ def TimeSeriesPlot_1row1day(df, config, save=True, timestamp_name='New_Timestamp
     END_TIME = time.perf_counter()
     print ("Total running time: %.2f mn" %((END_TIME-START_TIME)/60))  
     
-    
-
-def ts_compare_session(HenID, SessionID1, SessionID2, config, save=True, title='', last_folder_name='session_comparison'):
-    
-    #initialise variable
-    path_extracted_data = config.path_extracted_data
-    dico_zone_order = config.dico_zone_order
-    id_run = config.id_run
-    
-    #sort the yaxis
-    s = sorted(dico_zone_order.items(), key=operator.itemgetter(1))
-    li_zone_in_order = [x[0] for x in s]
-    
-    #sort the yaxis
-    s = sorted(dico_zone_order.items(), key=operator.itemgetter(1))
-    li_zone_in_order = [x[0] for x in s]    
-    
-    #create path where to save if not existing yet
-    if last_folder_name=='':
-        path_ = os.path.join(path_extracted_data,'visual','TimeSeriesPlot')
-    else:
-        path_ = os.path.join(path_extracted_data,'visual','TimeSeriesPlot',last_folder_name)
-    #create a director if not existing
-    if not os.path.exists(path_):
-        os.makedirs(path_)
-        
-    #open timeseries of each session
-    df_ts1 = pd.read_csv(os.path.join(path_extracted_data, id_run+'_TimeSeries_'+SessionID1+'.csv'),
-                    sep=';', parse_dates=['Timestamp', 'day']) 
-    df_ts2 = pd.read_csv(os.path.join(path_extracted_data, id_run+'_TimeSeries_'+SessionID2+'.csv'),
-                        sep=';', parse_dates=['Timestamp', 'day']) 
-    df_ts1 = df_ts1.sort_values('Timestamp', ascending=True)
-    df_ts2 = df_ts2.sort_values('Timestamp', ascending=True)
-    #make the ts start from begining
-    mi1 =  min(df_ts1['Timestamp'].tolist())
-    df_ts1['Timestamp'] = df_ts1['Timestamp'].map(lambda x: dt.datetime(x.year,x.month,x.day,0,0,0) if dt.datetime(x.year,x.month,x.day,x.hour,x.minute,x.second)==dt.datetime(mi1.year,mi1.month,mi1.day,1,30,0) else x)
-    mi2 =  min(df_ts2['Timestamp'].tolist())
-    df_ts2['Timestamp'] = df_ts2['Timestamp'].map(lambda x: dt.datetime(x.year,x.month,x.day,0,0,0) if dt.datetime(x.year,x.month,x.day,x.hour,x.minute,x.second)==dt.datetime(mi2.year,mi2.month,mi2.day,1,30,0) else x)
-    df_ts1['zone_ts'] = df_ts1[HenID].map(lambda x: int(dico_zone_order[x])).tolist()
-    df_ts2['zone_ts'] = df_ts2[HenID].map(lambda x: int(dico_zone_order[x])).tolist()
-    li_day1 = sorted(df_ts1['day'].unique()) #sort du plus petit au plus grand
-    li_day2 = sorted(df_ts2['day'].unique())     
-    
-    ################### plot
-    fig, axs = plt.subplots(max(len(li_day1),len(li_day2)), 2, constrained_layout=True, figsize=(20,8))
-    fig.suptitle(title) 
-    
-    # first session
-    for i,d in enumerate(li_day1):
-        #df_plt = df_ts1[(~df_ts1[HenID].isnull())&(df_ts1['day']==d)].copy()
-        df_plt = df_ts1[df_ts1['day']==d].copy()
-        axs[i,0].plot(df_plt['Timestamp'].tolist(), df_plt['zone_ts'].tolist())
-        axs[i,0].set_title(str(d).split('T')[0], size=8)
-            
-    # second session
-    for i,d in enumerate(li_day2):
-        #df_plt = df_ts2[(~df_ts2[HenID].isnull())&(df_ts2['day']==d)].copy()
-        df_plt = df_ts2[df_ts2['day']==d].copy()
-        axs[i,1].plot(df_plt['Timestamp'].tolist(), df_plt['zone_ts'].tolist())
-        axs[i,1].set_title(str(d).split('T')[0], size=8)
-
-    #save
-    if save:
-        plt.savefig(os.path.join(path_,id_run+'_ts_'+HenID+'_'+SessionID1+'_'+SessionID2+'.png'), dpi=300, format='png')
-        plt.show();
-    plt.close()
-    
-#small exemple
-#ts_compare_session('hen_105', '3B', '5B', config, last_folder_name='session_comparison')
-
-
-def entropy_compare_session(h, SessionID1, SessionID2, config, title, last_folder_name='', value_delta=30, time_delta=60*5):
-    '''compute running sample entropy'''
-    
-    #initialise variable
-    path_extracted_data = config.path_extracted_data
-    dico_zone_order = config.dico_zone_order
-    id_run = config.id_run
-        
-    path_entropy = os.path.join(path_extracted_data,'visual','entropy',last_folder_name)
-    #create a director if not existing
-    if not os.path.exists(path_entropy):
-        os.makedirs(path_entropy)
-        
-    #open timeseries of the two sessions
-    df_ts1 = pd.read_csv(os.path.join(path_extracted_data, id_run+'_TimeSeries_'+SessionID1+'.csv'),
-                         sep=';', parse_dates=['Timestamp','day']) 
-    df_ts2 = pd.read_csv(os.path.join(path_extracted_data, id_run+'_TimeSeries_'+SessionID2+'.csv'),
-                        sep=';', parse_dates=['Timestamp','day']) 
-    df_ts1 = df_ts1.sort_values('Timestamp', ascending=True)
-    df_ts2 = df_ts2.sort_values('Timestamp', ascending=True)
-    
-    #compute var in order to set axis of plot correctly
-    li_zones1 = list(df_ts1[h].unique())
-    li_zones2 = list(df_ts2[h].unique())
-    #without having to follow a particular order
-    fig, axs = plt.subplots(max(len(li_zones1),len(li_zones2))+2, 2, constrained_layout=True, figsize=(20,8))
-    fig.suptitle(title+'\n \n ', size=16) 
-    
-    for df_ts,c,li_zones in [(df_ts1,0,li_zones1), (df_ts2,1,li_zones2)]:
-                
-        #nan at the begining should not influence entropy (middle cant exist by construction) so lets remove it to have
-        #timestamp according to this  
-        df_ts = df_ts[~df_ts[h].isnull()]
-        df_ts[h] = df_ts[h].map(dico_zone_order).astype(int)
-        
-        #compute all-zones SampEtn and DistributionEnt
-        li_ts = [x for i,x in enumerate(df_ts['Timestamp'].tolist()) if i%time_delta==0]
-        li_ = [x for i,x in enumerate(df_ts[h].tolist()) if i%time_delta==0]
-        range_ = range(value_delta, len(li_))
-        li_ts_xaxis = [li_ts[i] for i in range_]
-        #DistribEnt
-        li_en = [DistributionEntropy(li_[0:i]) for i in range_]
-        li_en_running = [DistributionEntropy(li_[(i-value_delta):i]) for i in range_]
-        axs[0,c].set_ylim((0,1.5))
-        axs[0,c].plot(li_ts_xaxis, li_en_running)
-        axs[0,c].plot(li_ts_xaxis, li_en)
-        axs[0,c].set_title('Distribution Entropy All Zones', size=11)       
-        #SampEnt
-        li_en = [SampEnt(li_[0:i]) for i in range_]
-        li_en_running = [SampEnt(li_[(i-value_delta):i]) for i in range_]
-        axs[1,c].set_ylim((0,1))
-        axs[1,c].plot(li_ts_xaxis, li_en_running)
-        axs[1,c].plot(li_ts_xaxis, li_en)
-        axs[1,c].set_title('SampEnt All Zones', size=11) 
-        
-        #compute per zone entropy
-        for k,zone_ in enumerate(li_zones):
-            df_ts_zone = df_ts.copy()
-            df_ts_zone[h] = df_ts_zone[h].map(lambda x: x==zone_)
-            li_ts = [x for i,x in enumerate(df_ts_zone['Timestamp'].tolist()) if i%time_delta==0]
-            li_ = [x for i,x in enumerate(df_ts_zone[h].tolist()) if i%time_delta==0]
-            range_ = range(value_delta, len(li_))
-            li_en = [SampEnt(li_[0:i]) for i in range_]
-            li_en_running = [SampEnt(li_[i-value_delta:i]) for i in range_]
-            li_ts_xaxis = [li_ts[i] for i in range_]
-            axs[k+2,c].set_ylim((0,1))
-            axs[k+2,c].plot(li_ts_xaxis, li_en_running)
-            axs[k+2,c].plot(li_ts_xaxis, li_en)
-            axs[k+2,c].set_title('SampEnt '+zone_, size=11)
-            
-    #save plot
-    plt.savefig(os.path.join(path_entropy, id_run+'_entropy_'+h+'_'+SessionID1+'_'+SessionID2+'.png'), 
-                dpi=300, format='png')
-    plt.show()   
-    plt.close()
-    
-    
 def is_day(x, dico_):
     '''from a timestamp value x, and the dico_night_hour parameter, it will output true if its during the day, false otherwise'''
     if max(dico_.keys())<dt.datetime(x.year,x.month,x.day,0,0,0):
@@ -2611,28 +2571,13 @@ def nbr_device_info(x):
     else:
         return [np.nan]    
     
-def is_WG_open_old(x, dico_, date_first_opening_WG, close_dates, epsi_open=0, epsi_close=20):
-    '''from a timestamp value x, the dico_ (typically: dico_garden_opening_hour) and the date_first_opening_WG parameters, 
-    it will output true if the WG is open, false otherwise.
-    With the epsi_* parameters it allows to be more flexible with the true time of opening/closing'''
-    #if no record return nan
-    if pd.isnull(x)==True:
-        return(np.nan)
+
+def nbrh_WG_open(x, config):
+    dico_garden_opening_hour = config.dico_garden_opening_hour
+    close_dates = config.close_dates
+    date_first_opening_WG = config.date_first_opening_WG
     if (x<date_first_opening_WG) | (x in close_dates):
-        return(False)
-    if max(dico_.keys())<dt.datetime(x.year,x.month,x.day,0,0,0):
-        print('ERROR: your \"dico_garden_opening_hour\" parameter does not include information for the date: %s'%str(x))
-        sys.exit()
-    else:
-        #take info (i.e. values) of the dico_ key that represent the smallest date among all the date>=x:
-        m = min([d for d in dico_.keys() if d>=dt.datetime(x.year,x.month,x.day,0,0,0)])
-        #is the timestamp bigger than the first day hour-epsi_open & smaller than the latest day hour+epsi_close:
-        return (dt.datetime(1,1,1,x.hour,x.minute,0)>=(dt.datetime(1,1,1,dico_[m]['start_h'], dico_[m]['start_m'],0)-\
-                                                       dt.timedelta(minutes=epsi_open))) & \
-               (dt.datetime(1,1,1,x.hour,x.minute,0)<(dt.datetime(1,1,1, dico_[m]['end_h'], dico_[m]['end_m'],0)+\
-                                                       dt.timedelta(minutes=epsi_close)))
-    
-def nbrh_WG_open(dico_garden_opening_hour,x):
+        return 0
     #take info (i.e. values) of the dico_ key that represent the smallest date among all the date>=x:
     m = min([d for d in dico_garden_opening_hour.keys() if d>=dt.datetime(x.year,x.month,x.day,0,0,0)])
     v = dico_garden_opening_hour[m]
@@ -2652,7 +2597,7 @@ def is_WG_open(x, config, epsi_open=0, epsi_close=20):
     #if no record return nan
     if pd.isnull(x)==True:
         return(np.nan)
-    if (x<date_first_opening_WG) | (x in close_dates):
+    if (x<date_first_opening_WG) | (dt.datetime(x.year,x.month,x.day) in close_dates):
         return(False)
     if max(dico_.keys())<dt.datetime(x.year,x.month,x.day,0,0,0):
         print('ERROR: your \"dico_garden_opening_hour\" parameter does not include information for the date: %s'%str(x))
@@ -2785,6 +2730,13 @@ def WG_open_time(config, x):
     t = dico_[m]
     return (dt.datetime(1999,1,1,t['end_h'],t['end_m'],0) - dt.datetime(1999,1,1,t['start_h'],t['start_m'],0)).total_seconds()
 
+def WG_open_dayduration_untilopen(config, x):
+    dico_ = config.dico_garden_opening_hour
+    #take info (i.e. values) of the dico_ key that represent the smallest date among all the date>=x:
+    m = min([d for d in dico_.keys() if d>=dt.datetime(x.year,x.month,x.day,0,0,0)])
+    t = dico_[m]
+    return (dt.datetime(1999,1,1,t['start_h'],t['start_m'],0)-dt.datetime(1999,1,1,0,0,0)).total_seconds()
+
 
 #https://en.wikipedia.org/wiki/Sample_entropy
 #" SampEn is the negative natural logarithm of the probability that if two sets of simultaneous data points of length 
@@ -2814,6 +2766,8 @@ def sampen(L, r=2, m=2):
     return -np.log(A/B)
 
 
+
+
 def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', save=True, has_cons_equal_zone=True): 
     
     ''' 
@@ -2832,7 +2786,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     #start recording the time it last
     START_TIME = time.perf_counter()
     
-    #remove milliseconds now that we cleaned the data (ie.e the records with less than 1seconds duration
+    #remove milliseconds now that we cleaned the data (i.e. the records with less than 1seconds duration
     #sort by timestamp
     df.sort_values([timestamp_name], inplace=True)
     #use up to the second level only
@@ -2889,7 +2843,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
         print('ERROR: your timestamp difference does not equal your nbr_sec parameter')
         sys.exit()
         
-    ############ separete day and night
+    ############ separate day and night
     df_ts['is_day'] = df_ts[timestamp_name].map(lambda x: is_day(x, dico_night_hour))
     #night
     df_ts_night = df_ts[~df_ts['is_day']].copy()
@@ -2901,20 +2855,20 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     df_ts['level'] = df_ts['date'].copy()
     
     ############ open days to be removed
-    df_day = pd.read_csv(path_Days, sep=';', parse_dates=['Date'], dayfirst=True) #date verified: correct
+    df_day = pd.read_csv(path_Days, sep=',', parse_dates=['Date'], dayfirst=True) #date verified: correct
 
     
     ########################################################
     #### night info 
     ########################################################    
-    #done at begining: to free memory space
+    #have to be done at begining to free memory space
     print('----------------- main night zone and nbr of transitions over night....')
     df_ts_night = pd.melt(df_ts_night.filter([timestamp_name,'night_level']+li_hen), id_vars=[timestamp_name,'night_level'],
                           value_vars=li_hen)
     df_ts_night.rename(columns={'variable':'HenID','value':'Zone'}, inplace=True)
     df_ts_night = df_ts_night[~df_ts_night['Zone'].isnull()].groupby(['HenID','night_level']).agg(
                             night_Max_duration_zones=pd.NamedAgg(column='Zone', aggfunc=lambda x: max_duration_zones(x)),
-                            night_distribution_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: entropy(list(Counter(x).values()),base=2)),
+                            night_duration_Z5=pd.NamedAgg(column='Zone', aggfunc=lambda x: duration_Z5(x)),
                             night_Total_number_transition=pd.NamedAgg(column='Zone', 
                                                                       aggfunc=lambda x: nbr_transition(list((x))))).reset_index()
     df_ts_night['is_mvt_night'] = df_ts_night['night_Total_number_transition'].map(lambda x: int(x>0))
@@ -2926,23 +2880,24 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
                                             name_level(x,dico_night_hour) else str(x-dt.timedelta(days=1))[0:-9]+'_'+str(x)[8:10])
     df_n['hour'] = df_n['Timestamp'].map(lambda x: x.hour)
     
-    if not has_cons_equal_zone:
-        #ATTENTION: consecutives records of same zone should be removed, otherwise it will be counted twice here!!
-        df_n_ = df_n[~df_n['is_day']].groupby(['HenID','night_level','hour'])['Timestamp'].count().reset_index()
-        df_n__ = df_n_.pivot(index=['HenID','night_level'], columns='hour', values='Timestamp').reset_index()
-        df_n__.rename(columns={i:'nbr_transition_at_h'+str(i) for i in df_n_['hour'].unique()}, inplace=True)
-        df_n__= df_n__.fillna(0)
-        #first, create the nbr_transition_next1hafterlightoff
-        df_n__['start_night_hour'] = df_n__['night_level'].map(lambda x: dico_night_hour[min([d for d in dico_night_hour.keys() if\
-                                                                           d>=dt.datetime.strptime(x.split('_')[0],'%Y-%m-%d')])]['end_h'])
-        #display(df_n__[['night_level','start_night_hour']])
-        df_n__['nbr_transition_next1hafterlightoff'] = df_n__.apply(lambda x: x['nbr_transition_at_h'+str(x['start_night_hour'])], axis=1)
-        #display(df_n__['nbr_transition_next1hafterlightoff'].value_counts())
-        #then, remove the 17h, 18h, 19h, 20h hour due to change of winter/summer time
-        #we drop 'start_night_hour, as any way this will only appear in the ne that had a mvt, and its not of interest
-        df_n__.drop(['nbr_transition_at_h17', 'nbr_transition_at_h18', 'nbr_transition_at_h19','nbr_transition_at_h20','start_night_hour'],
-                    inplace=True, axis=1) 
-        df_ts_night = pd.merge(df_ts_night, df_n__, on=['HenID','night_level'], how='left')
+    #useless we dont want it
+    #if not has_cons_equal_zone:
+    #    #ATTENTION: consecutives records of same zone should be removed, otherwise it will be counted twice here!!
+    #    df_n_ = df_n[~df_n['is_day']].groupby(['HenID','night_level','hour'])['Timestamp'].count().reset_index()
+    #    df_n__ = df_n_.pivot(index=['HenID','night_level'], columns='hour', values='Timestamp').reset_index()
+    #    df_n__.rename(columns={i:'nbr_transition_at_h'+str(i) for i in df_n_['hour'].unique()}, inplace=True)
+    #    df_n__= df_n__.fillna(0)
+    #    #first, create the nbr_transition_next1hafterlightoff
+    #    df_n__['start_night_hour'] = df_n__['night_level'].map(lambda x: dico_night_hour[min([d for d in dico_night_hour.keys() if\
+    #                                                                       d>=dt.datetime.strptime(x.split('_')[0],'%Y-%m-%d')])]['end_h'])
+    #    #display(df_n__[['night_level','start_night_hour']])
+    #    df_n__['nbr_transition_next1hafterlightoff'] = df_n__.apply(lambda x: x['nbr_transition_at_h'+str(x['start_night_hour'])], axis=1)
+    #    #display(df_n__['nbr_transition_next1hafterlightoff'].value_counts())
+    #    #then, remove the 17h, 18h, 19h, 20h hour due to change of winter/summer time
+    #    #we drop 'start_night_hour, as any way this will only appear in the ne that had a mvt, and its not of interest
+    #    df_n__.drop(['nbr_transition_at_h17', 'nbr_transition_at_h18', 'nbr_transition_at_h19','nbr_transition_at_h20','start_night_hour'],
+    #                inplace=True, axis=1) 
+    #    df_ts_night = pd.merge(df_ts_night, df_n__, on=['HenID','night_level'], how='left')
         
     df_ts_night = df_ts_night.fillna(0) #add 0 to all the one that had no transition over night
     df_ts_night['level'] = df_ts_night['night_level'].map(lambda x: dt.datetime.strptime(x.split('_')[0], '%Y-%m-%d'))
@@ -2992,7 +2947,8 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     for c in ['duration_'+x for x in li_Zone]:
         df_daily['perc_'+c] = df_daily.apply(lambda x: round(x[c]/x['verification_daily_total_duration']*100), axis=1)
     #(Total time outside)/(total time wg is open)
-    df_daily['time_wg_open_sec'] = df_daily['level'].map(lambda x: WG_open_time(config,x))
+    df_daily['time_wg_open_sec'] = df_daily['level'].map(lambda x: WG_open_time(config,x)) #duratio of WG opening
+    df_daily['duration_sincedaystarted_beforeWGopened_sec'] = df_daily['level'].map(lambda x: WG_open_dayduration_untilopen(config,x))
     df_daily['perc_1_Zone_while_WG_open'] = df_daily.apply(lambda x: x['duration_1_Zone']/x['time_wg_open_sec']*100, axis=1)
     #replace by np.nan when WG is close
     df_daily.loc[df_daily['level']<date_first_opening_WG,'perc_1_Zone_while_WG_open'] = np.nan
@@ -3013,6 +2969,11 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
         df_daily[v.replace('FirstTimestamp','latency')+'_h'] = df_daily[v].map(lambda x: (dt.datetime(x.year,x.month,x.day,
                                                                       dico_night_hour[correct_key(x, dico_night_hour)]['end_h'],
                  dico_night_hour[correct_key(x, dico_night_hour)]['end_m'],0)-x).total_seconds()/60/60 if x is not pd.NaT else 0)
+        
+    #latency in WG
+    df_daily['FirstTimestamp_1_Zone_sec'] = df_daily['FirstTimestamp_1_Zone'].map(lambda x: (x.hour*60*60+x.minute*60+x.second))
+    df_daily['latency_1_Zone_h'] = df_daily.apply(lambda x: (x['FirstTimestamp_1_Zone_sec']-
+                                                            x['duration_sincedaystarted_beforeWGopened_sec'])/60/60 if x is not pd.NaT else 0, axis=1)    
     #replace by np.nan when WG is close
     df_daily.loc[df_daily['level']<date_first_opening_WG,'latency_1_Zone_h'] = np.nan
 
@@ -3034,6 +2995,12 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     #note that entropy gets as input a list of proba distribution (or count of each element)                    
     df_ = df[~df['Zone'].isnull()].groupby(['HenID','level']).agg(
            list_of_durations=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_of_durations(x, nbr_sec)),
+           food_related_behavior=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config)),
+           food_related_behavior_rp=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config, 
+                                                                                                       fake_sec=20*60)),
+           food_related_behavior_rm=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config,
+                                                                                                      fake_sec=-20*60)),
+           nestboxes_related_behavior=pd.NamedAgg(column='Zone', aggfunc=lambda x: nestboxes_related_behavior(li=list(x), config=config)),
            zone_list=pd.NamedAgg(column='Zone', aggfunc=lambda x: tuple(x)),
            list_of_zones=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_of_zones(list(x))),
            Max_duration_zones=pd.NamedAgg(column='Zone', aggfunc=lambda x: max_duration_zones(x)),
@@ -3348,6 +3315,373 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     END_TIME = time.perf_counter()
     print ("Total running time: %.2f mn" %((END_TIME-START_TIME)/60))
     
+    return df_daily
+
+def HenDailyVariable_Origins_simplest(df, config, name_='', timestamp_name='Timestamp', save=True, has_cons_equal_zone=True): 
+    
+    ''' 
+    Note: work with ts that have nan (typically at begining)
+    
+    Input:
+    df_ts: Each row correspond to a specific timestamp, each column to a specific hen timeseries (which column name must start 
+        with hen_ ). Must also have a Timestamp and a level column, which will be used to aggregate info and compute variables on these 
+        aggregated info
+    config: file with parameter
+    has_cons_equal_zone: if the initial data has some consecutives euqal zone for hte same hen (that are not necessarily at the same time)
+    
+    Output:
+    Dataframe with according variables'''
+    
+    #start recording the time it last
+    START_TIME = time.perf_counter()
+    
+    #remove milliseconds now that we cleaned the data (i.e. the records with less than 1seconds duration
+    #sort by timestamp
+    df.sort_values([timestamp_name], inplace=True)
+    #use up to the second level only
+    df[timestamp_name] = df[timestamp_name].map(lambda x: dt.datetime(x.year,x.month,x.day,x.hour,x.minute, x.second))
+    #remove the first record
+    df = df.drop_duplicates(subset=['HenID',timestamp_name], keep='last')
+    
+    #remove duration if existing in the dataframe to avoid error
+    if 'duration' in df.columns:
+        df.drop('duration', axis=1, inplace=True)
+    df_init = df.copy()
+    print('----------------- Create time serie')
+    df_ts = time_series_henColumn_tsRow(df, config, col_ts='Zone', ts_with_all_hen_value=False, save=False, hen_time_series=False)
+    
+    #compute nbr_sec computation here (list of difference between each timestamp, and must always be the same)
+    li_ts = df_ts[timestamp_name].tolist()
+    li_diff_ts = list(set(list(map(operator.sub, li_ts[1:], li_ts[0:-1]))))
+    if len(li_diff_ts)!=1:
+        print('ERROR: your timestamp columns have different one to one difference: ', li_diff_ts)
+        sys.exit()
+    nbr_sec = li_diff_ts[0].total_seconds()
+    print('your time series has %d seconds between two timestamps'%nbr_sec)    
+    
+    ############ initialise parameters from config file
+    path_extracted_data = config.path_extracted_data
+    id_run = config.id_run
+    date_max = config.date_max
+    dico_night_hour = config.dico_night_hour
+    dico_zone_order = config.dico_zone_order
+    date_first_opening_WG = config.date_first_opening_WG
+    close_dates = config.close_dates
+    dico_garden_opening_hour = config.dico_garden_opening_hour
+    path_FocalBird = config.path_FocalBird
+    path_Days = config.path_Days
+    nestbox_sec = config.nestbox_sec
+    ANestboxHour = config.ANestboxHour
+    BNestboxHour = config.BNestboxHour
+    successfullIntrusionHour = config.successfullIntrusionHour
+    WG_after_opening_mn = config.WG_after_opening_mn
+    NonTrans_dur_sec = config.NonTrans_dur_sec
+    nbr_sec_chaoticmvt_notmiddle = config.nbr_sec_chaoticmvt_notmiddle
+    li_nbr_sec_chaoticmvt_middle = config.li_nbr_sec_chaoticmvt_middle
+    li_perc_activity = config.li_perc_activity
+    #EntropyTimeComputation = config.EntropyTimeComputation
+    #NbrData = config.NbrData
+    lf_counter = config.lf_counter
+    
+    ############ small verifications
+    #verify columns name of df_ts and select the column we need
+    li_hen = [i for i in list(df_ts) if i.startswith('hen_')]
+    #verify that the timestamp has same difference than the suggested nbr_sec parameter
+    df_ts = df_ts.sort_values(timestamp_name)
+    if (df_ts[timestamp_name].iloc[1]-df_ts[timestamp_name].iloc[0]).seconds!=nbr_sec:
+        print('ERROR: your timestamp difference does not equal your nbr_sec parameter')
+        sys.exit()
+        
+    ############ separate day and night
+    df_ts['is_day'] = df_ts[timestamp_name].map(lambda x: is_day(x, dico_night_hour))
+    #night
+    df_ts_night = df_ts[~df_ts['is_day']].copy()
+    df_ts_night['night_level'] = df_ts_night[timestamp_name].map(lambda x: str(x)[0:-9]+'_'+str(x+dt.timedelta(days=1))[8:10] if\
+                                            name_level(x,dico_night_hour) else str(x-dt.timedelta(days=1))[0:-9]+'_'+str(x)[8:10])
+    #days
+    #note that minuit is: 0, and its date should be as 1,2 (day-1, day)
+    df_ts = df_ts[df_ts['is_day']].copy()
+    df_ts['level'] = df_ts['date'].copy()
+    
+    ############ open days to be removed
+    df_day = pd.read_csv(path_Days, sep=',', parse_dates=['Date'], dayfirst=True) #date verified: correct
+
+    
+    ########################################################
+    #### night info 
+    ########################################################    
+    #have to be done at begining to free memory space
+    print('----------------- main night zone and nbr of transitions over night....')
+    df_ts_night = pd.melt(df_ts_night.filter([timestamp_name,'night_level']+li_hen), id_vars=[timestamp_name,'night_level'],
+                          value_vars=li_hen)
+    df_ts_night.rename(columns={'variable':'HenID','value':'Zone'}, inplace=True)
+    df_ts_night = df_ts_night[~df_ts_night['Zone'].isnull()].groupby(['HenID','night_level']).agg(
+                            night_Max_duration_zones=pd.NamedAgg(column='Zone', aggfunc=lambda x: max_duration_zones(x)),
+                            night_duration_Z5=pd.NamedAgg(column='Zone', aggfunc=lambda x: duration_Z5(x)),
+                            night_Total_number_transition=pd.NamedAgg(column='Zone', 
+                                                                      aggfunc=lambda x: nbr_transition(list((x))))).reset_index()
+    df_ts_night['is_mvt_night'] = df_ts_night['night_Total_number_transition'].map(lambda x: int(x>0))
+    
+    #amount of transition per hour during the night
+    df_n = df_init.copy()
+    df_n['is_day'] = df_n['Timestamp'].map(lambda x: is_day(x, dico_night_hour))
+    df_n['night_level'] = df_n['Timestamp'].map(lambda x: str(x)[0:-9]+'_'+str(x+dt.timedelta(days=1))[8:10] if\
+                                            name_level(x,dico_night_hour) else str(x-dt.timedelta(days=1))[0:-9]+'_'+str(x)[8:10])
+    df_n['hour'] = df_n['Timestamp'].map(lambda x: x.hour)
+        
+    df_ts_night = df_ts_night.fillna(0) #add 0 to all the one that had no transition over night
+    df_ts_night['level'] = df_ts_night['night_level'].map(lambda x: dt.datetime.strptime(x.split('_')[0], '%Y-%m-%d'))
+    
+    ########################################################    
+    ############ one row per unique hen-timestamp 
+    ########################################################    
+    df = df_ts.filter([timestamp_name,'level']+li_hen).copy()  
+    #list of involved level
+    li_day = set(df['level'].tolist())  
+    df = pd.melt(df, id_vars=[timestamp_name,'level'], value_vars=li_hen)
+    df.rename(columns={'variable':'HenID','value':'Zone'}, inplace=True)
+    #we define the duration of each row to be the nbr_sec, its better than computing with the next timestamp as if we removed some days
+    #due to health-assessemnt, then it will induce wrong durations! also more efficient that way. BUT its an assumption, that the row must
+    #be equally spaced and nbr_sec is the duration in between each timestamp
+    df['duration_sec'] = nbr_sec
+    #list of not nan Zones
+    li_Zone = [x for x in df[~df['Zone'].isnull()]['Zone'].unique()]
+
+    ########################################################
+    print('----------------- total & percentage duration per Zone in seconds....')
+    #one row per day, hen, existingzone
+    df_ = df.groupby(['HenID','level','Zone'])['duration_sec'].agg(lambda x: sum(x)).reset_index()
+    #one row per day and hen, each columns account for a zone_duration
+    df_daily = df_.pivot_table(values='duration_sec', index=['HenID', 'level'], columns='Zone')
+    df_daily.rename(columns={x:'duration_'+x for x in li_Zone}, inplace=True)
+    #lets verify with total duration
+    df_daily['verification_daily_total_duration'] = df_daily.apply(lambda x: np.nansum([x[i] for i in ['duration_'+x for x in li_Zone]]),
+                                                                   axis=1)
+    df_daily['verification_daily_total_nbr_hour'] = df_daily['verification_daily_total_duration'].map(lambda x: x/60/60)
+
+    df_daily = df_daily.reset_index()
+    #replace np.nan duration by 0
+    df_daily.replace(np.nan,0, inplace=True)
+    #print('The number of hours per \"level\" period is of:')
+    #display(df_daily.groupby(['verification_daily_total_nbr_hour'])['level','HenID'].agg(lambda x: list(x)).reset_index())
+
+    #create an ordered list of the normalized duration per zone for chi2distance later (hen will first be sorted by entropy, and 
+    #hence we will do this at the end)
+    li_zone_dur = [c for c in df_daily.columns if c.startswith('duration_')] #keep same order
+    df_daily['dur_values'] = df_daily.apply(lambda x: str([x[i] for i in li_zone_dur]), axis=1)
+    df_daily['dur_values'] = df_daily['dur_values'].map(lambda x: eval(x))
+    df_daily['dur_values_normalized'] = df_daily['dur_values'].map(lambda x: [i/float(np.sum(x)) if float(np.sum(x))!=0 else 0 for i in x])
+
+    #add percentage in each zone also in zone 1
+    for c in ['duration_'+x for x in li_Zone]:
+        df_daily['perc_'+c] = df_daily.apply(lambda x: round(x[c]/x['verification_daily_total_duration']*100), axis=1)
+    #(Total time outside)/(total time wg is open)
+    df_daily['time_wg_open_sec'] = df_daily['level'].map(lambda x: WG_open_time(config,x)) #duratio of WG opening
+    df_daily['duration_sincedaystarted_beforeWGopened_sec'] = df_daily['level'].map(lambda x: WG_open_dayduration_untilopen(config,x))
+    df_daily['perc_1_Zone_while_WG_open'] = df_daily.apply(lambda x: x['duration_1_Zone']/x['time_wg_open_sec']*100, axis=1)
+
+    ########################################################
+    print('----------------- first timestamp in each zone per day & latency var....')
+    #why: will be usefull to produce other variables, to verify the code and to use it for some zones
+    df_ = df.groupby(['HenID', 'level','Zone'])[timestamp_name].agg(lambda x: min(list(x))).reset_index()
+    #agg function = 'first' ats its string value, and the default function is the mean. Here by construction df_ has unique such 
+    #values
+    df__ = df_.pivot_table(values=timestamp_name, index=['HenID', 'level'], columns='Zone', aggfunc='first')
+    df__.rename(columns={x:'FirstTimestamp_'+x for x in li_Zone}, inplace=True)
+    df__ = df__.reset_index()
+    df_daily = pd.merge(df_daily, df__, how='outer', on=['HenID','level'])
+    
+    #latency in WG
+    #how long was WG open for today
+    df_daily['nbr_h_WGopen'] = df_daily['level'].map(lambda x: nbrh_WG_open(x, config))
+    df_daily['FirstTimestamp_1_Zone_sec'] = df_daily['FirstTimestamp_1_Zone'].map(lambda x: (x.hour*60*60+x.minute*60+x.second))
+    df_daily['latency_1_Zone_h'] = df_daily.apply(lambda x: (x['FirstTimestamp_1_Zone_sec']-
+                                                            x['duration_sincedaystarted_beforeWGopened_sec'])/60/60 if x is not pd.NaT else 0, axis=1)    
+    
+    #when hen never went outside then put the total amount of time wg was open for. later on nan will be put when wg was close
+    df_daily['latency_1_Zone_h'] = np.where(df_daily['FirstTimestamp_1_Zone_sec'].isnull(), df_daily['nbr_h_WGopen'],
+                                            df_daily['latency_1_Zone_h'])
+
+    ########################################################
+    print('----------------- number of Zone (excluding nan)....')
+    df_ = df[~df['Zone'].isnull()].groupby(['HenID','level'])['Zone'].agg(lambda x: len(set((x)))).reset_index()
+    df_.rename(columns={'Zone':'Total_number_zone'}, inplace=True)
+    df_daily = pd.merge(df_daily, df_, how='outer', on=['HenID','level'])
+    
+        
+    ########################################################        
+    #compute some variables 
+    ########################################################
+    #based on a list of zones over a day, where each zone count for the same nbr_sec second
+    #e.g.[einstreu,eintreu,rampe,rampe.....]
+    #excluding empty zones, because it influences for exemple the entropy computation (if full of nan, then might be more predictable)    
+    print('----------------- compute some variables based on a list of zones over a day....')
+    #note that entropy gets as input a list of proba distribution (or count of each element)                    
+    df_ = df[~df['Zone'].isnull()].groupby(['HenID','level']).agg(
+           list_of_durations=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_of_durations(x, nbr_sec)),
+           food_related_behavior=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config)),
+           food_related_behavior_rp=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config, 
+                                                                                                       fake_sec=20*60)),
+           food_related_behavior_rm=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config,
+                                                                                                      fake_sec=-20*60)),
+           nestboxes_related_behavior=pd.NamedAgg(column='Zone', aggfunc=lambda x: nestboxes_related_behavior(li=list(x), config=config)),
+           zone_list=pd.NamedAgg(column='Zone', aggfunc=lambda x: tuple(x)),
+           list_of_zones=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_of_zones(list(x))), 
+           list_Z4=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_Z4(list(x))),
+           mid_cum_Z4_sec=pd.NamedAgg(column='Zone', aggfunc=lambda x: mid_cum_Z4_sec(list(x))),
+           Total_number_transition=pd.NamedAgg(column='Zone', aggfunc=lambda x: nbr_transition(list(x))),
+           nbr_stays=pd.NamedAgg(column='Zone', aggfunc=lambda x: nbr_bouts_per_zone(list(x))),
+           distribution_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: entropy(list(Counter(list(x)).values()),base=2)), 
+           vertical_travel_distance=pd.NamedAgg(column='Zone', aggfunc=lambda x: vertical_travel_distance(list(x))),
+           ).reset_index()
+    #distribution entropy note: order does not matter, number of 0min in a zone does not matter. compute here to then be able to verify with dur_values, isntead of computing directly on dur_values
+    
+    df_daily = pd.merge(df_daily, df_, how='outer', on=['HenID','level'])
+  
+    #nestboxes_related_behavior reliable only once the barn schedule is stable!
+    df_daily.loc[df_daily['level']<dt.datetime(2020,11,13,0,0,0),'nestboxes_related_behavior'] = np.nan
+    #if spent less than 15minutes in total in the nestbox zone then put 0
+    df_daily.loc[df_daily['duration_4_Zone']<15*60,'nestboxes_related_behavior'] = 0
+
+    #total number of stay
+    df_daily['nbr_stays_total'] = df_daily['nbr_stays'].map(lambda x: np.nansum(list(x.values())))
+    #retrieve info per zone
+    for z in li_Zone:
+        df_daily['nbr_stays_'+z] = df_daily['nbr_stays'].map(lambda x: x.get(z,0))
+    #total number of stay %of stays per zone
+    df_daily['nbr_stays_total'] = df_daily['nbr_stays'].map(lambda x: np.nansum(list(x.values())))
+    
+    ########################################################
+    #### WG
+    ########################################################    
+    print('------------ add WG info')
+    #put np.nan when nbr_h_WGopen to all WG var
+    for x_ in [x for x in df_daily.columns if '1_Zone' in x]:
+        df_daily.loc[df_daily['nbr_h_WGopen']==0, x_] = np.nan
+    
+    ########################################################
+    #add basics hens info
+    ########################################################
+    print('------------ add hen basics info')
+    #recompute the df in case thing changed in between
+    df_FB_ = FB_process_hen(config)
+    li_var_hen = ['HenID','PenID','CLASS','R-Pen','InitialStartDate','early_death','Treatment']
+    df_daily = pd.merge(df_daily, df_FB_[li_var_hen], on=['HenID'], how='left')
+    #add pen info and match with day info in order to remove the night that we should not use
+    #keep all li_var_hen, as some night might exist, while some days not due to disturbances, so we need to add it here
+    df_ts_night = pd.merge(df_ts_night, df_FB_[li_var_hen], on=['HenID'], how='left')  
+    
+    ########################################################
+    #remove dates
+    ########################################################    
+    ######## remove dates linked to specific hens on the day & add tags
+    #add the tag separately: per date on the day (to lazy for the night now, and probably no need)
+    df_FB_daily = FB_daily(config)
+    df_daily['date'] = df_daily['level'].map(lambda x: dt.datetime(x.year,x.month,x.day))
+    print(df_daily.shape)
+    df_daily = pd.merge(df_daily, df_FB_daily.filter(['HenID','TagID','date','FocalLegringName'], axis=1), on=['date','HenID'],
+                        how='inner') 
+    print(df_daily.shape)
+    df_daily.drop(['date'], axis=1, inplace=True)
+    #note that : how=inner in order to oly have records that are correctly associated to a chicken
+    #how!= left as we need to remove some records if the system was resetting etc, so we dont want to keep the tracking data of tags 
+    #that were not working correctly on that day
+
+    ####################################################################################################################################
+    ######## remove dates linked to specific system
+    print('-------------- Lets remove unwanted dates at PENS level')
+    df_daily['date_2remove_penper'] = df_daily.apply(lambda x: x['level'] in df_day[df_day[str(x['PenID'])+'_Day']==0]['Date'].tolist(), axis=1)
+    x0 = df_daily.shape[0]
+    df_daily = df_daily[~df_daily['date_2remove_penper']]
+    print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
+                df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))   
+
+    ####################################################################################################################################
+    ######## remove dates linked to specific nights and pens
+    #hen 129 in pen 8 was on focalbird list but always with non-working days, which will create nan in th pen. So remove it
+    df_ts_night = df_ts_night[~df_ts_night['PenID'].isnull()] 
+    df_ts_night['night_2remove'] = df_ts_night.apply(lambda x: x['level'] in df_day[df_day[str(x['PenID'])+'_Night']==0]['Date'].tolist(),axis=1)
+    df_ts_night = df_ts_night[~df_ts_night['night_2remove']]
+    df_ts_night.drop(['night_2remove'],inplace=True,axis=1)
+    #now we can join days and night info: will induce some rows with all the daily var beeing nan, but the night variable having value
+
+    try:
+        df_ts_night['level'] = df_ts_night['level'].map(lambda x: dt.datetime(x.year,x.month,x.day)) #necessary for the merging
+        #ERROR here can happen if initialstartsdate has two value for example!!
+        #merge on HenID, level and all other li_var_hen, otherwise we will have duplicated columns
+        df_daily = pd.merge(df_daily, df_ts_night, on=li_var_hen+['level'], how='outer')
+    except Exception as e: 
+        print('ERROOOOOOR',e)
+        return [df_ts_night, df_daily, li_var_hen]
+    print('All the night variables are: ', df_ts_night.columns)
+    print([c for c in df_daily.columns if str(c).startswith('night_level')])
+
+    ####################################################################################################################################
+    ######## remove dates of tags when they were not giving deviceupdate regularly or before 13.10.2020 as beforehand we couldnt 
+    #control for it
+    print('-------------- Lets remove dates of tags when they were not giving deviceupdate correctly')
+    #verified date: correct
+    df_wt = pd.read_csv(os.path.join(path_extracted_data, id_run+'_df_alldeviceinfo.csv'), parse_dates=['date'], dayfirst=True, sep=';') 
+    x0 = df_daily.shape[0]
+    #keep if it says to be kept in the device file!
+    df_daily['date_2keep'] = df_daily.apply(lambda x: x['level'] in df_wt[(df_wt['2keep'])&(df_wt['sender']==x['TagID'])]['date'].tolist(), 
+                                                          axis=1)
+    x0 = df_daily.shape[0]
+    df_daily = df_daily[(df_daily['date_2keep'])|(df_daily['level']<=dt.datetime(2020,10,12))]
+    print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
+                df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))  
+
+    ###################################################################################################################################    
+    ######## remove all the 30.09.2020 for the tags that still had no transition from before the light went on 
+    print('-------------- Lets remove the 30.09.2020 for the tags that still had no transition from before the light went on ')
+    x0 = df_daily.shape[0]
+    df_daily = df_daily[~((df_daily['level']==dt.datetime(2020,9,30))&(df_daily['verification_daily_total_duration']!=28800))]
+    df_daily = df_daily[df_daily['level']>dt.datetime(2020,9,29)]
+    print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
+                df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))
+
+    ####################################################################################################################################
+    ######## more generally remove all (dates,tagid) with not all seconds tracked (e.g. first day an animal is tracked)
+    print('-------------- Lets remove all (dates,tagid) with not all seconds tracked (e.g. first day an animal is tracked), and no night variable')
+    df_daily['nbr_h_per_day'] = df_daily['level'].map(lambda x: dico_night_hour[correct_key(x,dico_night_hour)]['nbr_hour'])
+    df_daily['correct_amount_of_hour'] = df_daily.apply(lambda x: x['verification_daily_total_nbr_hour']==x['nbr_h_per_day'], axis=1)
+    x0 = df_daily.shape[0]
+    #as we wont really use the night, lets just remove all the time that corret_maounf of our is incorrect, altought it might remove some correct nights (but otherwise we should keep nights in a separate table
+    df_daily = df_daily[df_daily['correct_amount_of_hour']]
+    print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
+                df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))
+
+    ######## remove days with only the night and not the days variables, as due to flickering we wotn really use night
+    print('-------------- remove days with only the night and not the days variables, as due to flickering we wotn really use night')
+    x0 = df_daily.shape[0]
+    df_daily = df_daily[~df_daily['Total_number_transition'].isnull()]
+    print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
+                df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))    
+
+    ######## remove all above the last official tracked day
+    print('-------------- Lets remove all above the last official tracked day')
+    x0 = df_daily.shape[0]
+    df_daily = df_daily[df_daily['level']<=config.date_max]
+    print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
+                df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))    
+
+    ########################################################
+    #add DOA; DIB
+    ########################################################    
+    df_daily['DOA'] = df_daily['level'].map(lambda x: (x-config.birth_date).days) 
+    df_daily['WOA'] = df_daily['DOA'].map(lambda x: math.ceil(x/7))
+    df_daily['DIB'] = df_daily['DOA'].map(lambda x: x-118)
+    df_daily['WIB'] = df_daily['DIB'].map(lambda x:  math.ceil(x/7))
+
+    #save
+    if save:
+        print('save')
+        df_daily.drop(['zone_list','date_2remove_penper','date_2keep'],inplace=True,axis=1) #verification_daily_total_duration
+        df_daily.to_csv(os.path.join(path_extracted_data, id_run+'_daily_'+'_'+str(name_)+'_variables.csv'), sep=';', index=False)
+
+    END_TIME = time.perf_counter()
+    print ("Total running time: %.2f mn" %((END_TIME-START_TIME)/60))
+
     return df_daily
 
 

@@ -18,7 +18,7 @@ id_run = 'ALLDATA_'
 #path_initial_data\Abteile 3_5\log_*
 #path_initial_data\Abteile 10_12\log_*
 #CSV
-focal_name = 'Focalbirds_09-10-2021.csv'
+focal_name = 'Focalbirds_08-02-2022_V.csv'
 day_name = 'TrackingDaysWhenCanWeUseWhat.csv'
 path_ = r'G:\VPHI\Welfare\2- Research Projects\Camille Montalcini\Origins.GS'
 path_initial_data = os.path.join(path_,'GantnerSystem','DATA')

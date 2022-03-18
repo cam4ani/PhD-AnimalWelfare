@@ -2,6 +2,7 @@ import os
 import numpy as np
 import datetime as dt
 from collections import defaultdict
+import pandas as pd
 
 
 #ATTENTION: Taking out the manure/shit this week will not happen on Thursday 24.12 but on Wednesday (23.12.)
@@ -18,16 +19,23 @@ id_run = 'ALLDATA_'
 #path_initial_data\Abteile 3_5\log_*
 #path_initial_data\Abteile 10_12\log_*
 #CSV
-focal_name = 'FocalBirdsInfo26-07-2021.csv'
-day_name = 'TrackingDaysWhenCanWeUseWhat.csv'
+#focal_name = 'FocalBirdsInfo26-07-2021.csv'
+#day_name = 'TrackingDaysWhenCanWeUseWhat.csv'
+focal_name = 'FocalBirdsInfo26-07-2021_comma.csv'
+day_name = 'TrackingDaysWhenCanWeUseWhat_comma.csv'
 path_initial_data = r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2\GantnerSystem\_dailycheckingSystem'
 path_dataoutput = r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2\DataOutput'
+#path_initial_data = r'R:\OriginsProject\OFHE2.OriginsE2\GantnerSystem\_dailycheckingSystem'
+#path_dataoutput = r'R:\OriginsProject\OFHE2.OriginsE2\DataOutput'
 path_extracted_data = os.path.join(path_dataoutput,'TrackingSystem') 
 path_extracted_HA = os.path.join(path_dataoutput,'HA') 
 
 path_FocalBird = os.path.join( r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2','FOCAL BIRDS',focal_name)
 path_Days = os.path.join( r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2','FOCAL BIRDS',day_name)
 path_performance = os.path.join(r'G:\VPHI\Welfare\2- Research Projects\OFHE2.OriginsE2\Productivity')
+#path_FocalBird = os.path.join( r'R:\OriginsProject\OFHE2.OriginsE2','FOCAL BIRDS',focal_name)
+#path_Days = os.path.join( r'R:\OriginsProject\OFHE2.OriginsE2','FOCAL BIRDS',day_name)
+#path_performance = os.path.join(r'R:\OriginsProject\OFHE2.OriginsE2\Productivity')
 
 #add id_run for readibility
 path_extracted_data_daily_check = os.path.join(path_extracted_data, 'DailyVerifications') #not linked to the id_run as its more general
@@ -56,7 +64,10 @@ pal_interintre_treatment = {'Intra individuals - OFH':'orange', 'Inter individua
 
 dico_pen_tr = {'pen3':'OFH','pen5':'OFH','pen9':'OFH','pen11':'OFH',
                'pen4':'TRAN','pen8':'TRAN','pen10':'TRAN','pen12':'TRAN',
-               'pen6':'TRAN-nonfocal', 'pen7':'OFH-nonfocal'}
+               'pen6':'TRAN-nonfocal', 'pen7':'OFH-nonfocal',
+              3:'OFH',5:'OFH',9:'OFH',11:'OFH',
+               4:'TRAN',8:'TRAN',10:'TRAN',12:'TRAN',
+               6:'TRAN-nonfocal', 7:'OFH-nonfocal'}
 dico_pen_ts = {3:'TrackingSystem 3-5',
               4:'TrackingSystem 3-5',
               5:'TrackingSystem 3-5',
@@ -80,8 +91,8 @@ dico_pen_ts = {3:'TrackingSystem 3-5',
               'pen9':'TrackingSystem 8-9',
               'pen10':'TrackingSystem 10-12',
               'pen11':'TrackingSystem 10-12',
-              'pen12':'TrackingSystem 10-12'}
-
+              'pen12':'TrackingSystem 10-12'}        
+        
 #Adatability study
 li_binmn = [5,10,15,20,30]
 penalty = 0
@@ -93,14 +104,79 @@ min_date_drivers = dt.datetime(2020,11,14) #light schedule finished to change
 #day of birth to compute day of age
 birth_date = dt.datetime(2020,6,3) #DOA 1 = 2020-6-4
 
-#nestbox time:
+#from Markus email on the 9 march 2022:
 #Nestbox Time 16:00 close / 02:05 open. 
-        
+#eggs collections:Normally we start at 07:45 – 08:00 Uhr collecting eggs on the floor, but can be different at the weekends. After this, 
+#we start the egg collection in the front room
+
+#vaccination date
+#typically on a vaccination day the watter will be turnedd of from around 8h to 10h30, then the vaccination will be delivered for like two hours through the water. It shouldnt taste anything
+dico_vaccinationDate_type = {dt.datetime(2020,11,13):'Ecoli', #only on flock that needs it, and our flock needed it
+                             dt.datetime(2020,12,31):'IBMa5Nobilis', 
+                             dt.datetime(2021,1,12):'IB4/91Nobilis', 
+                             dt.datetime(2021,3,9):'IBMa5Nobilis',
+                             dt.datetime(2021,3,26):'IB4/91Nobilis',
+                             dt.datetime(2021,5,7):'IBMa5Nobilis',
+                             dt.datetime(2021,5,21):'IB4/91Nobilis'}
+
+date_consistent_barn_schedule = dt.datetime(2021,11,12)
+########################################################################################
+#min_h and max_h of laying egg behavior and of hiding behavior
+tuple_min_max_egglaying_h = (2,6)
+tuple_min_max_egghiding_h = (10,15) #all hours after x:0:0 and until y:59:50
+
+#feeding running at x:y for dur_FR_beforeandafter_mn before and after that time. For power reason, its per group of four pens, however, the noise as stimuli may be in pen 5 when the pen1 - pen4 are running, though the other pens will be running 1mn later. it starts wiht pen -4, then pen 5-8, etc : 5 groups of 4 pens, each running for 1 mn
+#note that there is also a sensor in the feeding system that sense if there is enough food in the big container, and if not it will fill this up. this can happen anytime, and will make some noise, but unfortunately we cannot have this information
+#NOTE: this is only since date_consistent_barn_schedule! else its varying
+tupleFR_h_mn = [(2,31),(6,1),(9,1),(12,1),(14,16),(16,16)] 
+#duration of feeding line before and after the time given in tupleFR_h_mn
+dur_FR_beforeandafter_mn = 2
+#duration before and after food runing that is defined as grey area: with mixed behavior of waiting for food vs not waiting for food
+dur_around_FR_2remove = 15
+
+#compute list of 0 (food not running)/1(=food runing), with one value per second
+li_when_food_running = []
+for h,mn in tupleFR_h_mn:
+    li_when_food_running.extend(pd.date_range(start=dt.datetime(2020,1,1,h,mn,0)-dt.timedelta(minutes=dur_FR_beforeandafter_mn), 
+                                      end=dt.datetime(2020,1,1,h,mn,0)+dt.timedelta(minutes=dur_FR_beforeandafter_mn), 
+                                      freq = 'S'))
+li_FR = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,1,16,59,59), freq = 'S') 
+li_FR = [1 if x in li_when_food_running else 0 for x in li_FR]
+
+li_when_food_notnotrunning = []
+for h,mn in tupleFR_h_mn:
+    li_when_food_notnotrunning.extend(pd.date_range(start=dt.datetime(2020,1,1,h,mn,
+                                                                0)-dt.timedelta(minutes=dur_FR_beforeandafter_mn+dur_around_FR_2remove), 
+                                      end=dt.datetime(2020,1,1,h,mn,0)+dt.timedelta(minutes=dur_FR_beforeandafter_mn+dur_around_FR_2remove), 
+                                      freq = 'S'))
+li_FNR = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,1,16,59,59), freq = 'S') 
+li_FNR = [0 if x in li_when_food_notnotrunning else 1 for x in li_FNR]
+#small visual verification
+#plt.plot(li_FR);
+
+#compute list of 0 (not laying behavior)/1(=laying behavior), with one value per secon
+li_timeforlaying = pd.date_range(start=dt.datetime(2020,1,1,tuple_min_max_egglaying_h[0],0,0), 
+                                      end=dt.datetime(2020,1,1,tuple_min_max_egglaying_h[1],0,0), 
+                                      freq = 'S')
+li_LT = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,1,16,59,59), freq = 'S') 
+li_LT = [1 if x in li_timeforlaying else 0 for x in li_LT]
+
+
+#compute list of 0 (not hiding behavior)/1(=hiding behavior), with one value per secon
+li_timeforhiding = pd.date_range(start=dt.datetime(2020,1,1,tuple_min_max_egghiding_h[0],0,0), 
+                                      end=dt.datetime(2020,1,1,tuple_min_max_egghiding_h[1],0,0), 
+                                      freq = 'S')
+li_HT = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,1,16,59,59), freq = 'S') 
+li_HT = [1 if x in li_timeforhiding else 0 for x in li_HT]    
+########################################################################################
+
+
 #garden opening hours: until (included) date
 #The opening of the wintergarden happens automatically but the closing time is written down as soon as the AKB of the first pen is closed. Normally it takes about 10 minutes to close the rest of the AKBs.
 date_first_opening_WG = dt.datetime(2020,10,8,0,0,0)
+#daes that the wg was close the entire day
 close_dates = [dt.datetime(2021,1,12,0,0,0), dt.datetime(2021,2,1,0,0,0), dt.datetime(2021,2,13,0,0,0), dt.datetime(2021,2,14,0,0,0),
-               dt.datetime(2021,2,17,0,0,0)]
+               dt.datetime(2021,2,17,0,0,0),dt.datetime(2021,5,21,0,0,0)]
 dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m':0,'end_h':17,'end_m':0},
                            dt.datetime(2020,10,9,0,0,0):{'start_h':12,'start_m':30,'end_h':17,'end_m':0},
                            dt.datetime(2020,10,11,0,0,0):{'start_h':12,'start_m':30,'end_h':16,'end_m':50},
