@@ -76,7 +76,6 @@ import imageio
 #from skimage import color #kernel die
 from colorsys import hls_to_rgb
 
-
 #models
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
@@ -1868,21 +1867,34 @@ def dico_duration_stats(li, nbr_sec):
 
 
 ############################ Food related behavior
-#Food related behavior: (zone 3 and zone 5?): (DZ3FR/DFR&inside - DZ3FNR/DFNR&inside) /(DZ3FR/DFR&inside + DZ3FNR/DFNR&inside). birds that stays in the top tier to always for instance should have ~0 issue: two zones
-def food_related_behavior(li_Z, config, fake_sec=0):
-    '''fake_sec allows to repeatability of this behavior with ne having random/nonfood related timing. We will be moving the list of second 0/1:feeding/not feeding by fake_sec. fake_sec should be negative if we want to move the feeding time to earlier timestamps. FOr example, fake_sec of 60*2 means that we will pretend the food is delivered 2mn later so we will add 0 at begining and cut the last ones'''
-    #initialise parameters
+#Food related behavior: (zone 3 and zone 5): (DZ3FR/DFR&inside - DZ3FNR/DFNR&inside) /(DZ3FR/DFR&inside + DZ3FNR/DFNR&inside). birds that stays in the top tier to always for instance should have ~0 issue: two zones
+def food_related_behavior(li_Z, config, fake_sec):
+    '''fake_sec allows to lokks at stats of this behavior with having random/nonfood related timing. We will be moving the list of second 0/1:feeding/not feeding by fake_sec. fake_sec should be negative if we want to move the feeding time to earlier timestamps. FOr example, fake_sec of 60*2 means that we will pretend the food is delivered 2mn later so we will add 0 at begining and cut the last ones'''
+    #before light schedule is stable it should return nan (or more generally anytime the list doesnot match
     li_FR = config.li_FR
     li_FNR = config.li_FNR
+    sf = len(li_FR)
+    snf = len(li_FNR)
+    if snf!=sf:
+        print('ERROR FOOD BEHAVIOR init var')
+        sys.exit()
     
     #add fake_sec
     if fake_sec>0:
         li_FR =  list([0] * fake_sec)+li_FR[:-fake_sec]  
         li_FNR =  list([0] * fake_sec)+li_FNR[:-fake_sec]  
     if fake_sec<0:
-        li_FR =  li_FR[abs(fake_sec):] + list([0] * fake_sec)
-        li_FNR =  li_FNR[abs(fake_sec):] + list([0] * fake_sec)
-        
+        li_FR =  li_FR[abs(fake_sec):] + list([0] * abs(fake_sec))
+        li_FNR =  li_FNR[abs(fake_sec):] + list([0] * abs(fake_sec))
+    #small check
+    if (len(li_FR)!=sf) | (len(li_FNR)!=snf):
+        print('ERROR FOOD BEHAVIOR')
+        sys.exit() 
+    #before the light schedule is stable we should return nan
+    if len(li_FR)!=len(li_Z):
+        #print('ERROR CHECK your food list')
+        return np.nan
+
     #from 1_zone to 1
     li_Z = [int(i.split('_')[0]) for i in li_Z]
       
@@ -1898,18 +1910,15 @@ def food_related_behavior(li_Z, config, fake_sec=0):
     li_foodNOTruning_birdZ3Z5 = [int(fnr==1)*int(z in [3,5]) for fnr, z in zip(li_FNR, li_Z)]
     #print(li_foodNOTruning_birdZ3Z5)
     
-    if sum(li_foodrunning_birdinside)==0:
-        return np.nan
-    
-    if sum(li_foodNOTrunning_birdinside)==0:
-        return -9999
+    #if division by 0 return -99999 as it shouldnt happen
+    if (sum(li_foodrunning_birdinside)==0)|(sum(li_foodNOTrunning_birdinside)==0):
+        return(-99999)    
     n = sum(li_foodruning_birdZ3Z5)/sum(li_foodrunning_birdinside) - sum(li_foodNOTruning_birdZ3Z5)/sum(li_foodNOTrunning_birdinside)
     p = sum(li_foodruning_birdZ3Z5)/sum(li_foodrunning_birdinside) + sum(li_foodNOTruning_birdZ3Z5)/sum(li_foodNOTrunning_birdinside)
     #print(n, p)
-    
-    #if never went in the Z3&Z5 then return 0 then division by 0 issue --> return 0 i.e. neutral
+    #if never went in the Z3&Z5 then return 0 (division by 0 issue --> return 0 i.e. neutral)
     if p==0:
-        return(0)
+        return(0)    
     return n/p
 #li_ZS = [1,1,1,1,2,2,2,3,3,3,1,4,2,2,2,2,5,5,5,4,4,4]
 #li_FR = [0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0]
@@ -1932,6 +1941,7 @@ def nestboxes_related_behavior(li, config, li_LT=[], li_HT=[]):
     
     li_layingtime_birdinZ4 = [int(lt==1)*int(z==4) for lt, z in zip(li_LT, li)]    
     li_hidingtime_birdinZ4 = [int(ht==1)*int(z==4) for ht, z in zip(li_HT, li)]    
+    
     p = sum(li_layingtime_birdinZ4)/sum(li_LT)+sum(li_hidingtime_birdinZ4)/sum(li_HT)
     n = sum(li_layingtime_birdinZ4)/sum(li_LT)-sum(li_hidingtime_birdinZ4)/sum(li_HT)
     #if never went in the nestbox then return 0 then division by 0 issue --> return 0 i.e. neutral nor afternoon nor morning:
@@ -1975,7 +1985,7 @@ def li_missingZone_mvtPerc_DU(li,nbr_sec):
     missingdown_perc = 0
     missingup_perc = 0
     if len(li_z_d_pzd)>1:
-        missingdown_perc = sum([1 for z,d,pzd in li_z_d_pzd[1:] if pzd>1])/(len(li_z_d_pzd)-1)*100
+        missingdown_perc = sum([1 for z,d,pzd in lif_z_d_pzd[1:] if pzd>1])/(len(li_z_d_pzd)-1)*100
         missingup_perc = sum([1 for z,d,pzd in li_z_d_pzd[1:] if pzd<-1])/(len(li_z_d_pzd)-1)*100
     return missingdown_perc, missingup_perc, len(li_z_d_pzd)
 #small examples
@@ -2153,7 +2163,7 @@ def vertical_travel_distance(li):
     v = [x[0] for x in itertools.groupby(li)]
     #replace '3_zone" by an integer
     v = [int(i.split('_')[0]) for i in v]
-    #replace WG (zone 1) by zone 2 (cant be removed earlier as 3-1-3 would ber educed to 0 transtions for example)
+    #replace WG (zone 1) by zone 2 (cant be removed earlier as 3-1-3 would be reduced to 0 transtions for example)
     v = [int(str(i).replace('1','2')) for i in v]
     li_len = [abs(v[i+1]-v[i]) for i in range(0,len(v)-1)]
     return(sum(li_len))
@@ -2164,7 +2174,7 @@ def vertical_travel_distance(li):
 #      '4_Zone','4_Zone','4_Zone','4_Zone',
 #      '2_Zone','2_Zone','2_Zone','2_Zone',
 #      '4_Zone','4_Zone','4_Zone','4_Zone']
-#print(vertical_travel_distance(li)) #--> 6 (v=[1, 2, 3, 4, 2, 4], remove wg: v=[2, 3, 4, 2, 4], li_len=[1,1,2,2])
+#print(vertical_travel_distance(li)) #--> 6 (v=[1, 2, 3, 4, 2, 4], remove wg: v=[2, 2, 3, 4, 2, 4], li_len=[0,1,1,2,2])
 #li = ['1_Zone','1_Zone','1_Zone','1_Zone',
 #      '2_Zone','2_Zone','2_Zone',
 #      '3_Zone',
@@ -2172,6 +2182,37 @@ def vertical_travel_distance(li):
 #      '1_Zone','1_Zone',
 #      '4_Zone','4_Zone','4_Zone','4_Zone']
 #vertical_travel_distance(li) #6    
+#li = ['1_Zone','1_Zone','1_Zone','1_Zone',
+#      '2_Zone','2_Zone','2_Zone',
+#      '3_Zone',
+#      '4_Zone','4_Zone','4_Zone','4_Zone',
+#      '3_Zone',
+#      '4_Zone','4_Zone','4_Zone','4_Zone']
+#print(vertical_travel_distance(li))  #4 : li_len=[0, 1, 1, 1, 1]
+
+def vertical_td_l(li,li_light_lighter):
+    '''notw li_light_lighter mus be consicutive period, else we will have more trnasitions if the last zone from a phase is not the smae form the first one of the other phase'''
+    #before light schedule is stable it should return nan (or more generally anytime the list doesnot match
+    if len(li)!=len(li_light_lighter):
+        #print('ERROR: check your lightlghter list')
+        return np.nan
+    li = np.array(li)
+    li_light_lighter = np.array(li_light_lighter)
+    li_index = list(np.where(li_light_lighter==1)[0]) #give a list of index of entries with 1 in the list
+    li = li[li_index]
+    return(vertical_travel_distance(li))
+#small example
+#li = ['1_Zone','1_Zone','1_Zone','1_Zone','2_Zone','2_Zone','2_Zone','4_Zone','4_Zone',
+#      '4_Zone','4_Zone','1_Zone','1_Zone','4_Zone','4_Zone','4_Zone','4_Zone']
+#li_l = [0,0,0,1,1,1,1,1,1,
+#        0,0,0,0,0,0,0,0]
+#print(vertical_td_l(li,li_l)) #2
+#li = ['1_Zone','1_Zone','1_Zone','1_Zone','2_Zone','2_Zone','2_Zone','3_Zone','4_Zone','4_Zone',
+#      '4_Zone','4_Zone','1_Zone','1_Zone','4_Zone','4_Zone','4_Zone','4_Zone']
+#li_l = [0,0,0,1,1,1,1,1,1,1,
+#        0,0,0,0,0,0,0,0]
+#print(vertical_td_l(li,li_l)) #2
+    
     
 def stats_list(li_en_shift):
     dico = {}
@@ -2995,7 +3036,8 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     #note that entropy gets as input a list of proba distribution (or count of each element)                    
     df_ = df[~df['Zone'].isnull()].groupby(['HenID','level']).agg(
            list_of_durations=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_of_durations(x, nbr_sec)),
-           food_related_behavior=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config)),
+           food_related_behavior=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config,
+                                                                                                    fake_sec=0)),
            food_related_behavior_rp=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config, 
                                                                                                        fake_sec=20*60)),
            food_related_behavior_rm=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config,
@@ -3382,6 +3424,9 @@ def HenDailyVariable_Origins_simplest(df, config, name_='', timestamp_name='Time
     #EntropyTimeComputation = config.EntropyTimeComputation
     #NbrData = config.NbrData
     lf_counter = config.lf_counter
+    li_light_dawn = config.li_light_dawn
+    li_light_dusk = config.li_light_dusk
+    dico_HAID_date = config.dico_HAID_date
     
     ############ small verifications
     #verify columns name of df_ts and select the column we need
@@ -3508,7 +3553,6 @@ def HenDailyVariable_Origins_simplest(df, config, name_='', timestamp_name='Time
     df_.rename(columns={'Zone':'Total_number_zone'}, inplace=True)
     df_daily = pd.merge(df_daily, df_, how='outer', on=['HenID','level'])
     
-        
     ########################################################        
     #compute some variables 
     ########################################################
@@ -3519,11 +3563,18 @@ def HenDailyVariable_Origins_simplest(df, config, name_='', timestamp_name='Time
     #note that entropy gets as input a list of proba distribution (or count of each element)                    
     df_ = df[~df['Zone'].isnull()].groupby(['HenID','level']).agg(
            list_of_durations=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_of_durations(x, nbr_sec)),
-           food_related_behavior=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config)),
+           food_related_behavior=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config,
+                                                                                                    fake_sec=0)),
            food_related_behavior_rp=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config, 
                                                                                                        fake_sec=20*60)),
            food_related_behavior_rm=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config,
-                                                                                                      fake_sec=-20*60)),
+                                                                                                      fake_sec=-20*60)), 
+           food_related_behavior4=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config,
+                                                                                                    fake_sec=4*60)),
+           food_related_behavior_rp4=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config, 
+                                                                                                       fake_sec=20*60+4*60)),
+           food_related_behavior_rm4=pd.NamedAgg(column='Zone', aggfunc=lambda x: food_related_behavior(li_Z=list(x), config=config,
+                                                                                                      fake_sec=-20*60+4*60)),           
            nestboxes_related_behavior=pd.NamedAgg(column='Zone', aggfunc=lambda x: nestboxes_related_behavior(li=list(x), config=config)),
            zone_list=pd.NamedAgg(column='Zone', aggfunc=lambda x: tuple(x)),
            list_of_zones=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_of_zones(list(x))), 
@@ -3533,6 +3584,8 @@ def HenDailyVariable_Origins_simplest(df, config, name_='', timestamp_name='Time
            nbr_stays=pd.NamedAgg(column='Zone', aggfunc=lambda x: nbr_bouts_per_zone(list(x))),
            distribution_entropy=pd.NamedAgg(column='Zone', aggfunc=lambda x: entropy(list(Counter(list(x)).values()),base=2)), 
            vertical_travel_distance=pd.NamedAgg(column='Zone', aggfunc=lambda x: vertical_travel_distance(list(x))),
+           vertical_travel_distance_dawn=pd.NamedAgg(column='Zone', aggfunc=lambda x: vertical_td_l(list(x),li_light_dawn)),
+           vertical_travel_distance_dusk=pd.NamedAgg(column='Zone', aggfunc=lambda x: vertical_td_l(list(x),li_light_dusk)),
            ).reset_index()
     #distribution entropy note: order does not matter, number of 0min in a zone does not matter. compute here to then be able to verify with dur_values, isntead of computing directly on dur_values
     
@@ -3587,6 +3640,9 @@ def HenDailyVariable_Origins_simplest(df, config, name_='', timestamp_name='Time
     #how!= left as we need to remove some records if the system was resetting etc, so we dont want to keep the tracking data of tags 
     #that were not working correctly on that day
 
+    #remove HA dates 
+    df_daily = df_daily[~df_daily['level'].isin(list(dico_HAID_date.values()))]
+    
     ####################################################################################################################################
     ######## remove dates linked to specific system
     print('-------------- Lets remove unwanted dates at PENS level')
@@ -3652,11 +3708,14 @@ def HenDailyVariable_Origins_simplest(df, config, name_='', timestamp_name='Time
                 df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))
 
     ######## remove days with only the night and not the days variables, as due to flickering we wotn really use night
-    print('-------------- remove days with only the night and not the days variables, as due to flickering we wotn really use night')
+    print('-------------- remove days with only the night and not the days variables, as due to flickering we wont really use night')
     x0 = df_daily.shape[0]
     df_daily = df_daily[~df_daily['Total_number_transition'].isnull()]
     print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
                 df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))    
+
+    #removing date we change to summer itme
+    df_daily = df_daily[df_daily['level']!=dt.datetime(2021,3,28)]
 
     ######## remove all above the last official tracked day
     print('-------------- Lets remove all above the last official tracked day')

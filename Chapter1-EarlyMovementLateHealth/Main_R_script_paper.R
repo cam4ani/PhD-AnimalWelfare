@@ -3,10 +3,15 @@ library(brms) #predictability: Double hierearchical model
 library(MCMCglmm) #HPDinterval
 library(dplyr) #%>%
 library(parallel) #several cores in brms
+library(lme4)
 library(lmerTest) #lmer with pvalues
 library(MuMIn) #R2
 library(merTools) #sim
 library(dplyr) #%>%
+library(MCMCglmm) #bivariate model
+library(broom)
+library(nadiv)
+library(tidyverse)
 
 my.cores = detectCores() #speed up
 
@@ -48,16 +53,36 @@ res_validity = psych::principal(r=df[li_pca], rotate="none", nfactors=3, scores=
 res_validity
 head(df, 3)
 
-######################################### Individual estimates #########################################
+##################################### random intercept model (RI) #######################################
+#PenID & Class
+#To compare models with nested fixed effects (here: class) and same random structure, ML estimation must be used and not REML
+MAVG_pen_class = lmerTest::lmer(PC1 ~ time + time2 + avgDIB_scale + Treatment + CLASS + temperature_C_avg_scale + InitialWeight_scale + (1|PenID/HenID), REML=FALSE, data = df)
+summary(MAVG_pen_class)
+#-->penID accounted less than 1% of the variation
 
-###### random intercept model ######
+MAVG_pen_noclass = lmerTest::lmer(PC1 ~ time + time2 + avgDIB_scale + Treatment + temperature_C_avg_scale + InitialWeight_scale + (1|PenID/HenID), REML=FALSE, data = df)
+summary(MAVG_pen_noclass)
+#-->penID accounted less than 1% of the variation
+
+anova(MAVG_pen_class, MAVG_pen_noclass, Test='Chisq')
+#-->without class is better when penID is present, lets try when penID is not present
+
+MAVG_nopen_class = lmerTest::lmer(PC1 ~ time + time2 + avgDIB_scale + Treatment + CLASS + temperature_C_avg_scale + InitialWeight_scale + (1|HenID), REML=FALSE, data = df)
+summary(MAVG_nopen_class)
+
 MAVG_nopen_noclass = lmerTest::lmer(PC1 ~ time + time2 + avgDIB_scale + Treatment + temperature_C_avg_scale + InitialWeight_scale + (1|HenID), REML=FALSE, data = df)
 summary(MAVG_nopen_noclass)
 r.squaredGLMM(MAVG_nopen_noclass)
+###### normally distributed residuals
 qqnorm(resid(MAVG_nopen_noclass))
 qqline(resid(MAVG_nopen_noclass))
 hist(resid(MAVG_nopen_noclass))
+######check homogeneity of variance (residuals has constant variance)
 plot(MAVG_nopen_noclass)
+
+anova(MAVG_nopen_class, MAVG_nopen_noclass, Test='Chisq')
+#-->without class is better when penID is not present
+#-->remove penID and class, use MAVG_nopen_noclass
 
 ###### repeatability ######
 set.seed(1)
@@ -66,6 +91,8 @@ posterior_HenID = apply(simulated@ranef$"HenID"[ , , 1],1,var)
 posterior_residual  = simulated@sigma^2
 quantile(posterior_HenID/(posterior_HenID+posterior_residual), prob=c(0.025, 0.5, 0.975))
 
+
+########################################### random slope model ###########################################
 ###### Random slope 1 (RS1) ######
 MPL1 = lmer(PC1 ~ time + time2 + avgDIB_scale + Treatment + temperature_C_avg_scale + InitialWeight_scale + (1 + time|HenID), 
             REML=TRUE, data=df)
@@ -86,7 +113,38 @@ qqline(resid(MPL2))
 hist(resid(MPL2))
 plot(MPL2)
 
-######## predictability: Double hierarchical model
+############################################# comparing models #############################################
+
+#to compare with the random slope model, we will run the RI as previously selected but with RELM = TRUE, beause two models with nested
+#random structures cannot be done with ML as the estimators for the variance terms are biased under ML 
+MAVG_compare = lmerTest::lmer(PC1 ~ time + time2 + avgDIB_scale + Treatment + temperature_C_avg_scale + InitialWeight_scale + (1|HenID), 
+                      REML=TRUE, data = df)
+
+#because we used REML estimation, we can compare AICs
+AIC(MAVG_compare, MPL1, MPL2)
+
+########### MLP1 & MAVG_compare
+#note that anova can not be used to comapre these models due to the "testing on the bounderies" issue. In other words, LRT from anova is 
+#not correct anymore as we compare parameters that are on the boundery (random effects)
+#LRT MAVG_nopen_noclass and MPL1 (i.e. compare  model with the random intercept and the model with random intercept and slope)
+#Same as in the paper citation from: https://link.springer.com/content/pdf/10.1007%2F978-0-387-87458-6_5.pdf (chapter 5 of the book)
+L = -2*(summary(MAVG_compare)$logLik -summary(MPL1)$logLik)
+pval = 0.5 * ((1 - pchisq(L, df=1)) + (1 - pchisq(L, df=2))) #p.124, Chapter 5 from: Zuur, A. F., Ieno, E. N., Walker, N., Saveliev, A. A. and Smith, G. M. 2009. Mixed Effects Models and Extensions in Ecology with R. Springer.Mixed Effects Modelling for Nested Data
+pval
+#--> p-value < 0.001 --> reject H0 --> adding random slope to the model is a significant improvement
+
+########### MLP2 & MLP1
+#p.23 of supplements of the guide provided in the paper as citation: Arnold, P. A., Kruuk, L. E. B. & Nicotra, A. B. How to analyse plant phenotypic plasticity in response to a changing climate. New Phytologist 222, 1235–1241 (2019).
+chi2 <-2*(summary(MPL2)$logLik -summary(MPL1)$logLik) 
+1-pchisq(chi2, 3)
+#OR same as formula as before give same results too:
+L = -2*(summary(MPL1)$logLik -summary(MPL2)$logLik)
+pval = 0.5 * ((1 - pchisq(L, df=1)) + (1 - pchisq(L, df=2))) 
+pval
+#--> p-value < 0.001 --> reject H0 --> adding random quadratic term slope to the model is a significant improvement
+
+
+######################################## predictability: Double hierarchical model ########################################
 double_model = bf(PC1~ time + time2 + Treatment + temperature_C_avg_scale + (1+time+time2|a|HenID), 
                   sigma~time + time2 + Treatment + temperature_C_avg_scale + (1|a|HenID))
 modelPred = brm(double_model, data=df, iter=50000, inits="random", seed=12345, control = list(max_treedepth=15), 
@@ -106,12 +164,6 @@ df_pred = as_draws(modelPred)
 
 
 ######################################### Bivariate models #########################################
-library(lme4)
-library(MCMCglmm)
-library(broom)
-library(nadiv)
-library(tidyverse)
-
 #df_MVT_4stat_BI.csv: csv with the predictability estimates and the first week variables for bivariate models
 df = read.csv('df_MVT_4stat_BI.csv', header = TRUE, sep = ";")
 df$HenID = as.factor(df$HenID)   
@@ -212,6 +264,7 @@ prior_biv = list(R = list(V = diag(c(1, 0.0001), 2, 2), nu = 1.002, fix = 2),
                                         nu = 4,
                                         alpha.mu = rep(0,4),
                                         alpha.V = diag(25^2,4,4))))
+
 chain1 = MCMCglmm(cbind(PC1, severity) ~ trait-1 +
                        trait:Treatment + 
                        at.level(trait,1):time +

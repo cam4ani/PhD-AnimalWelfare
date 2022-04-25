@@ -4,8 +4,10 @@ import datetime as dt
 from collections import defaultdict
 import pandas as pd
 
-
+#here d'ete 28.03.2021!!
 #ATTENTION: Taking out the manure/shit this week will not happen on Thursday 24.12 but on Wednesday (23.12.)
+
+#email: 07/07/2021, 12:20the barn is always treated against mites before the birds move in (as a prevention). A second round of treating #against mites is normally only performed when needed. 
 
 #id of run
 #this id should be changed each time you want to generate new results (i.e. be saving everyting without deleting what was already saved. Typically when you modify a function in the "utils.py" file and you would like to compare the results
@@ -98,6 +100,7 @@ li_binmn = [5,10,15,20,30]
 penalty = 0
 #window: we set up so that the animal can have up to 1h of movement wihtout penality
 dico_window = {5:12, 10:6, 15:4, 20:3, 30:2}
+date_populationday = dt.datetime(2020,9,29)
 max_date_adaptability = dt.datetime(2020,11,22)
 min_date_drivers = dt.datetime(2020,11,14) #light schedule finished to change
 
@@ -111,15 +114,24 @@ birth_date = dt.datetime(2020,6,3) #DOA 1 = 2020-6-4
 
 #vaccination date
 #typically on a vaccination day the watter will be turnedd of from around 8h to 10h30, then the vaccination will be delivered for like two hours through the water. It shouldnt taste anything
-dico_vaccinationDate_type = {dt.datetime(2020,11,13):'Ecoli', #only on flock that needs it, and our flock needed it
-                             dt.datetime(2020,12,31):'IBMa5Nobilis', 
-                             dt.datetime(2021,1,12):'IB4/91Nobilis', 
-                             dt.datetime(2021,3,9):'IBMa5Nobilis',
-                             dt.datetime(2021,3,26):'IB4/91Nobilis',
-                             dt.datetime(2021,5,7):'IBMa5Nobilis',
-                             dt.datetime(2021,5,21):'IB4/91Nobilis'}
+dico_vaccinationDate_type = {dt.datetime(2020,11,13):'Ecoli', #wg finish earlier, and first date barn schedule regular so we wont have it, only on flock that needs it, and our flock needed it
+                             dt.datetime(2020,12,30):'IBMa5Nobilis', #wg 13h, we have mvt data
+                             dt.datetime(2021,1,12):'IB4/91Nobilis', #wg close but not certain from aviforum anotation, no mvt data 
+                             dt.datetime(2021,3,9):'IBMa5Nobilis', #wg 13h, we have mvt data
+                             dt.datetime(2021,3,26):'IB4/91Nobilis', #wg 13h, we have mvt data
+                             dt.datetime(2021,5,7):'IBMa5Nobilis',#wg 13h, we have mvt data
+                             dt.datetime(2021,5,21):'IB4/91Nobilis'} #wg close
 
-date_consistent_barn_schedule = dt.datetime(2021,11,12)
+date_consistent_barn_schedule = dt.datetime(2020,11,13)
+
+#dawn and dusk light schedule only form chapter two: i.e. only since barn schedule is stable (i.e. the above date)
+li_light_dawn_ = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,1,2,4,0), freq = 'S')
+li_light_dawn = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,1,16,59,59), freq = 'S')
+li_light_dawn = [1 if x in li_light_dawn_ else 0 for x in li_light_dawn] 
+li_light_dusk_ = pd.date_range(start=dt.datetime(2020,1,1,16,47,0), end=dt.datetime(2020,1,1,17,0,0), freq = 'S')
+li_light_dusk = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,1,16,59,59), freq = 'S')
+li_light_dusk = [1 if x in li_light_dusk_ else 0 for x in li_light_dusk] 
+
 ########################################################################################
 #min_h and max_h of laying egg behavior and of hiding behavior
 tuple_min_max_egglaying_h = (2,6)
@@ -134,6 +146,7 @@ dur_FR_beforeandafter_mn = 2
 #duration before and after food runing that is defined as grey area: with mixed behavior of waiting for food vs not waiting for food
 dur_around_FR_2remove = 15
 
+#li_FR: 1 when food is running (else 0) ; li_FNR: 1 when food is not running (else 0)
 #compute list of 0 (food not running)/1(=food runing), with one value per second
 li_when_food_running = []
 for h,mn in tupleFR_h_mn:
@@ -142,15 +155,14 @@ for h,mn in tupleFR_h_mn:
                                       freq = 'S'))
 li_FR = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,1,16,59,59), freq = 'S') 
 li_FR = [1 if x in li_when_food_running else 0 for x in li_FR]
-
-li_when_food_notnotrunning = []
+li_when_food_notnotrunning = [] ## all except when running or grey zone
 for h,mn in tupleFR_h_mn:
     li_when_food_notnotrunning.extend(pd.date_range(start=dt.datetime(2020,1,1,h,mn,
                                                                 0)-dt.timedelta(minutes=dur_FR_beforeandafter_mn+dur_around_FR_2remove), 
                                       end=dt.datetime(2020,1,1,h,mn,0)+dt.timedelta(minutes=dur_FR_beforeandafter_mn+dur_around_FR_2remove), 
                                       freq = 'S'))
-li_FNR = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,1,16,59,59), freq = 'S') 
-li_FNR = [0 if x in li_when_food_notnotrunning else 1 for x in li_FNR]
+li_FNR = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,1,16,59,59), freq = 'S')
+li_FNR = [0 if x in li_when_food_notnotrunning else 1 for x in li_FNR] 
 #small visual verification
 #plt.plot(li_FR);
 
@@ -174,7 +186,7 @@ li_HT = [1 if x in li_timeforhiding else 0 for x in li_HT]
 #garden opening hours: until (included) date
 #The opening of the wintergarden happens automatically but the closing time is written down as soon as the AKB of the first pen is closed. Normally it takes about 10 minutes to close the rest of the AKBs.
 date_first_opening_WG = dt.datetime(2020,10,8,0,0,0)
-#daes that the wg was close the entire day
+#dates that the wg was close the entire day
 close_dates = [dt.datetime(2021,1,12,0,0,0), dt.datetime(2021,2,1,0,0,0), dt.datetime(2021,2,13,0,0,0), dt.datetime(2021,2,14,0,0,0),
                dt.datetime(2021,2,17,0,0,0),dt.datetime(2021,5,21,0,0,0)]
 dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m':0,'end_h':17,'end_m':0},
@@ -216,7 +228,7 @@ dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m'
                            dt.datetime(2020,11,18,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':35},
                            dt.datetime(2020,11,20,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2020,11,22,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':45},
-                           dt.datetime(2020,11,23,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':50}, #not real tiem as HA
+                           dt.datetime(2020,11,23,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':50}, #not real time as HA
                            dt.datetime(2020,11,24,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':20},
                            dt.datetime(2020,11,25,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':15},
                            dt.datetime(2020,11,26,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
@@ -247,6 +259,9 @@ dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m'
                            dt.datetime(2020,12,23,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':50},
                            dt.datetime(2020,12,27,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2020,12,28,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':15},
+                           dt.datetime(2020,12,29,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
+                           dt.datetime(2020,12,30,0,0,0):{'start_h':13,'start_m':0,'end_h':16,'end_m':30},
+                           dt.datetime(2020,12,31,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2021,1,2,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2021,1,3,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':45},
                            dt.datetime(2021,1,4,0,0,0):{'start_h':10,'start_m':0,'end_h':10,'end_m':1},
@@ -453,7 +468,6 @@ NonTrans_dur_sec = 60
 #min and max date to consider, all other dates will be removed by the "preprocessing_*()" function
 date_min = dt.datetime(2020,9,28,0,0,0) 
 date_max = min(dt.datetime.now(), dt.datetime(2021,7,25,23,59,59))
-
 
 dico_HAID_date = {'HA1':dt.datetime(2020,11,23), 
                   'HA2':dt.datetime(2021,1,4), 
