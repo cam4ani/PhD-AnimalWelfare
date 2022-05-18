@@ -126,23 +126,18 @@ AIC(MAVG_compare, MPL1, MPL2)
 ########### MLP1 & MAVG_compare
 #note that anova can not be used to comapre these models due to the "testing on the bounderies" issue. In other words, LRT from anova is 
 #not correct anymore as we compare parameters that are on the boundery (random effects)
-#LRT MAVG_nopen_noclass and MPL1 (i.e. compare  model with the random intercept and the model with random intercept and slope)
-#Same as in the paper citation from: https://link.springer.com/content/pdf/10.1007%2F978-0-387-87458-6_5.pdf (chapter 5 of the book)
+#p.124, Chapter 5 from: Zuur, A. F., Ieno, E. N., Walker, N., Saveliev, A. A. and Smith, G. M. 2009. Mixed Effects Models and Extensions in Ecology with R. Springer.Mixed Effects Modelling for Nested Data (https://link.springer.com/content/pdf/10.1007%2F978-0-387-87458-6_5.pdf)
 L = -2*(summary(MAVG_compare)$logLik -summary(MPL1)$logLik)
-pval = 0.5 * ((1 - pchisq(L, df=1)) + (1 - pchisq(L, df=2))) #p.124, Chapter 5 from: Zuur, A. F., Ieno, E. N., Walker, N., Saveliev, A. A. and Smith, G. M. 2009. Mixed Effects Models and Extensions in Ecology with R. Springer.Mixed Effects Modelling for Nested Data
+pval = 0.5 * ((1 - pchisq(L, df=1)) + (1 - pchisq(L, df=2))) 
 pval
 #--> p-value < 0.001 --> reject H0 --> adding random slope to the model is a significant improvement
 
 ########### MLP2 & MLP1
-#p.23 of supplements of the guide provided in the paper as citation: Arnold, P. A., Kruuk, L. E. B. & Nicotra, A. B. How to analyse plant phenotypic plasticity in response to a changing climate. New Phytologist 222, 1235–1241 (2019).
-chi2 <-2*(summary(MPL2)$logLik -summary(MPL1)$logLik) 
-1-pchisq(chi2, 3)
-#OR same as formula as before give same results too:
 L = -2*(summary(MPL1)$logLik -summary(MPL2)$logLik)
-pval = 0.5 * ((1 - pchisq(L, df=1)) + (1 - pchisq(L, df=2))) 
+pval = 0.5 * ((1 - pchisq(L, df=2)) + (1 - pchisq(L, df=3)))
 pval
 #--> p-value < 0.001 --> reject H0 --> adding random quadratic term slope to the model is a significant improvement
-
+#OR same result when doing (pval = 1-pchisq(L, 3)) as on p.23 of supplements of the guide provided in the paper as citation: Arnold, P. A., Kruuk, L. E. B. & Nicotra, A. B. How to analyse plant phenotypic plasticity in response to a changing climate. New Phytologist 222, 1235–1241 (2019)
 
 ######################################## predictability: Double hierarchical model ########################################
 double_model = bf(PC1~ time + time2 + Treatment + temperature_C_avg_scale + (1+time+time2|a|HenID), 

@@ -113,7 +113,7 @@ birth_date = dt.datetime(2020,6,3) #DOA 1 = 2020-6-4
 #we start the egg collection in the front room
 
 #vaccination date
-#typically on a vaccination day the watter will be turnedd of from around 8h to 10h30, then the vaccination will be delivered for like two hours through the water. It shouldnt taste anything
+#typically on a vaccination day the water will be turned off from around 8h to 10h30, then the vaccination will be delivered for like two hours through the water. It shouldnt taste anything
 dico_vaccinationDate_type = {dt.datetime(2020,11,13):'Ecoli', #wg finish earlier, and first date barn schedule regular so we wont have it, only on flock that needs it, and our flock needed it
                              dt.datetime(2020,12,30):'IBMa5Nobilis', #wg 13h, we have mvt data
                              dt.datetime(2021,1,12):'IB4/91Nobilis', #wg close but not certain from aviforum anotation, no mvt data 
@@ -122,6 +122,7 @@ dico_vaccinationDate_type = {dt.datetime(2020,11,13):'Ecoli', #wg finish earlier
                              dt.datetime(2021,5,7):'IBMa5Nobilis',#wg 13h, we have mvt data
                              dt.datetime(2021,5,21):'IB4/91Nobilis'} #wg close
 
+#first day when light started at 2h in the morning
 date_consistent_barn_schedule = dt.datetime(2020,11,13)
 
 #dawn and dusk light schedule only form chapter two: i.e. only since barn schedule is stable (i.e. the above date)
@@ -137,7 +138,7 @@ li_light_dusk = [1 if x in li_light_dusk_ else 0 for x in li_light_dusk]
 tuple_min_max_egglaying_h = (2,6)
 tuple_min_max_egghiding_h = (10,15) #all hours after x:0:0 and until y:59:50
 
-#feeding running at x:y for dur_FR_beforeandafter_mn before and after that time. For power reason, its per group of four pens, however, the noise as stimuli may be in pen 5 when the pen1 - pen4 are running, though the other pens will be running 1mn later. it starts wiht pen -4, then pen 5-8, etc : 5 groups of 4 pens, each running for 1 mn
+#feeding running at x:y for dur_FR_beforeandafter_mn before and after that time. For power reason, its per group of four pens, however, the noise as stimuli may be in pen 5 when the pen1 - pen4 are running, though the other pens will be running 1mn later. it starts with pen -4, then pen 5-8, etc : 5 groups of 4 pens, each running for 1 mn
 #note that there is also a sensor in the feeding system that sense if there is enough food in the big container, and if not it will fill this up. this can happen anytime, and will make some noise, but unfortunately we cannot have this information
 #NOTE: this is only since date_consistent_barn_schedule! else its varying
 tupleFR_h_mn = [(2,31),(6,1),(9,1),(12,1),(14,16),(16,16)] 
@@ -260,7 +261,7 @@ dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m'
                            dt.datetime(2020,12,27,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2020,12,28,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':15},
                            dt.datetime(2020,12,29,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
-                           dt.datetime(2020,12,30,0,0,0):{'start_h':13,'start_m':0,'end_h':16,'end_m':30},
+                           dt.datetime(2020,12,30,0,0,0):{'start_h':13,'start_m':0,'end_h':16,'end_m':30},#vaccination
                            dt.datetime(2020,12,31,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2021,1,2,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2021,1,3,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':45},
@@ -299,8 +300,8 @@ dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m'
                            dt.datetime(2021,2,8,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':20},
                            dt.datetime(2021,2,9,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2021,2,10,0,0,0):{'start_h':9,'start_m':10,'end_h':16,'end_m':20},
-                           dt.datetime(2021,2,11,0,0,0):{'start_h':11,'start_m':45,'end_h':14,'end_m':0},
-                           dt.datetime(2021,2,12,0,0,0):{'start_h':12,'start_m':0,'end_h':13,'end_m':30},
+                           dt.datetime(2021,2,11,0,0,0):{'start_h':11,'start_m':45,'end_h':14,'end_m':0}, #because very cold
+                           dt.datetime(2021,2,12,0,0,0):{'start_h':12,'start_m':0,'end_h':13,'end_m':30}, #because very cold
                            dt.datetime(2021,2,15,0,0,0):{'start_h':10,'start_m':40,'end_h':16,'end_m':25},
                            dt.datetime(2021,2,18,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2021,2,19,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':45},
@@ -321,7 +322,7 @@ dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m'
                            dt.datetime(2021,3,6,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':50},
                            dt.datetime(2021,3,7,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':40},
                            dt.datetime(2021,3,8,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
-                           dt.datetime(2021,3,9,0,0,0):{'start_h':13,'start_m':30,'end_h':16,'end_m':30},
+                           dt.datetime(2021,3,9,0,0,0):{'start_h':13,'start_m':30,'end_h':16,'end_m':30},#vaccination
                            dt.datetime(2021,3,10,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2021,3,11,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':15},
                            dt.datetime(2021,3,12,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':15},
@@ -338,7 +339,7 @@ dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m'
                            dt.datetime(2021,3,23,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':20},
                            dt.datetime(2021,3,24,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':10},
                            dt.datetime(2021,3,25,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
-                           dt.datetime(2021,3,26,0,0,0):{'start_h':13,'start_m':30,'end_h':16,'end_m':30},
+                           dt.datetime(2021,3,26,0,0,0):{'start_h':13,'start_m':30,'end_h':16,'end_m':30},#vaccination
                            dt.datetime(2021,3,27,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':15},
                            dt.datetime(2021,3,28,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':15},
                            dt.datetime(2021,3,29,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
@@ -380,7 +381,7 @@ dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m'
                            dt.datetime(2021,5,4,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':40},
                            dt.datetime(2021,5,5,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':0},
                            dt.datetime(2021,5,6,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
-                           dt.datetime(2021,5,7,0,0,0):{'start_h':13,'start_m':30,'end_h':16,'end_m':30},
+                           dt.datetime(2021,5,7,0,0,0):{'start_h':13,'start_m':30,'end_h':16,'end_m':30},#vaccination
                            dt.datetime(2021,5,8,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':20},
                            dt.datetime(2021,5,9,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2021,5,10,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
@@ -403,7 +404,8 @@ dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m'
                            dt.datetime(2021,5,27,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':15},
                            dt.datetime(2021,5,28,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2021,5,29,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':15},
-                           dt.datetime(2021,5,30,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},                                    dt.datetime(2021,5,31,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},         
+                           dt.datetime(2021,5,30,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
+                           dt.datetime(2021,5,31,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},         
                            dt.datetime(2021,6,1,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':15},
                            dt.datetime(2021,6,2,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':30},
                            dt.datetime(2021,6,3,0,0,0):{'start_h':10,'start_m':0,'end_h':16,'end_m':20},
@@ -456,6 +458,11 @@ dico_garden_opening_hour = {dt.datetime(2020,10,8,0,0,0):{'start_h':11,'start_m'
                            dt.datetime(2021,7,26,0,0,0):{'start_h':8,'start_m':0,'end_h':16,'end_m':30}                          }
 #the keys are included into their values information (i.e. datex:{open time, close time}, date x is opening at that time and closing at that time too (i.e. until (included) date x)
 
+
+#min duration in seconds to account for in the count of visitis to Z4 in the morning
+mindur_toaccountforZ4 = 15
+
+
 #the date will be removed for all tag with >= lf_counter time having ==0
 lf_counter = 5
 
@@ -502,6 +509,7 @@ dico_night_hour = {dt.datetime(2020,9,30,0,0,0): {'start_h':9,'start_m':0,'end_h
                    dt.datetime(2020,11,12,0,0,0): {'start_h':3,'start_m':0,'end_h':17,'end_m':0,'nbr_hour':14},
                    dt.datetime(2021,8,15,0,0,0): {'start_h':2,'start_m':0,'end_h':17,'end_m':0,'nbr_hour':15}}
 
+#from chapter 2: chickens get stable from datetime.datetime(2020, 11, 8, 0, 0): 40 days in the barn
 #nestbox time that it must stay at least to have a chance biologically to be able to lay an egg in the nextbox
 nestbox_sec = 15*60
 

@@ -1869,7 +1869,7 @@ def dico_duration_stats(li, nbr_sec):
 ############################ Food related behavior
 #Food related behavior: (zone 3 and zone 5): (DZ3FR/DFR&inside - DZ3FNR/DFNR&inside) /(DZ3FR/DFR&inside + DZ3FNR/DFNR&inside). birds that stays in the top tier to always for instance should have ~0 issue: two zones
 def food_related_behavior(li_Z, config, fake_sec):
-    '''fake_sec allows to lokks at stats of this behavior with having random/nonfood related timing. We will be moving the list of second 0/1:feeding/not feeding by fake_sec. fake_sec should be negative if we want to move the feeding time to earlier timestamps. FOr example, fake_sec of 60*2 means that we will pretend the food is delivered 2mn later so we will add 0 at begining and cut the last ones'''
+    '''fake_sec allows to look at stats of this behavior with having random/nonfood related timing. We will be moving the list of second 0/1:feeding/not feeding by fake_sec. fake_sec should be negative if we want to move the feeding time to earlier timestamps. For example, fake_sec of 60*2 means that we will pretend the food is delivered 2mn later so we will add 0 at begining and cut the last ones'''
     #before light schedule is stable it should return nan (or more generally anytime the list doesnot match
     li_FR = config.li_FR
     li_FNR = config.li_FNR
@@ -1977,7 +1977,7 @@ def mid_cum_Z4_sec(li):
     return np.nan
 #small example
 #li = [1,1,4,4,4,1,1,2,2,2,3,3,3,1,4,2,2,2,2,5,5,5,4,4,4]
-#mid_cum_Z4(li) #5
+#mid_cum_Z4_sec(li) #5
 
 ############### missing zones (flying)
 def li_missingZone_mvtPerc_DU(li,nbr_sec):
