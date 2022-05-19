@@ -28,10 +28,6 @@ visualise blups
 produce dataframe with all blups and first week mvt var and HA5 (80 rows), named df_MVT_4stat)
 output: visuals and df_MVT_4stat.csv used in notebook named "LmerApproach_5_PC1&HA"
 
-LmerApproach_5_PC1&HA.ipynb
-study association between mvt development variables (blups intercetp, linear slope, quadratic slope, predictability, #days with no transitions during first three days) and health indicator
-
-
 
 ----------------------------------- McmcApproach ------------------------------------------
 McmcApproach_4_df4HA.ipynb
@@ -39,7 +35,7 @@ from BLUPS_variability.csv and df_MVT_4individuality_withPCA.csv and daily movem
 merge the predictability BLUPS, the first week mvt variable into one dataframe (named: df_MVT_4stat_BI.csv) used in step 5 (McmcApproach_5_PC1&HA.ipynb)
 output: df_MVT_4stat_BI.csv
 
-McmcApproach_5_PC1&HA.ipynb
+McmcApproach_5_PC1&Feather.ipynb ; McmcApproach_5_PC1&Severity.ipynb
 bivariate approach to see assocaition between mvt development variables (blups intercetp, linear slope, quadratic slope, predictability, #days with no transitions during first three days)
 
 
