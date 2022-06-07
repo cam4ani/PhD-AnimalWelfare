@@ -141,7 +141,7 @@ tuple_min_max_egghiding_h = (10,15) #all hours after x:0:0 and until y:59:50
 #feeding running at x:y for dur_FR_beforeandafter_mn before and after that time. For power reason, its per group of four pens, however, the noise as stimuli may be in pen 5 when the pen1 - pen4 are running, though the other pens will be running 1mn later. it starts with pen -4, then pen 5-8, etc : 5 groups of 4 pens, each running for 1 mn
 #note that there is also a sensor in the feeding system that sense if there is enough food in the big container, and if not it will fill this up. this can happen anytime, and will make some noise, but unfortunately we cannot have this information
 #NOTE: this is only since date_consistent_barn_schedule! else its varying
-tupleFR_h_mn = [(2,31),(6,1),(9,1),(12,1),(14,16),(16,16)] 
+tupleFR_h_mn = [(2,31),(6,1),(9,1),(12,1),(14,16),(16,16)]  #for 2,31 we will consider 29:00sec-32:59sec, i.e. 1 minute previous & 3 after
 #duration of feeding line before and after the time given in tupleFR_h_mn
 dur_FR_beforeandafter_mn = 2
 #duration before and after food runing that is defined as grey area: with mixed behavior of waiting for food vs not waiting for food
@@ -181,6 +181,49 @@ li_timeforhiding = pd.date_range(start=dt.datetime(2020,1,1,tuple_min_max_egghid
                                       freq = 'S')
 li_HT = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,1,16,59,59), freq = 'S') 
 li_HT = [1 if x in li_timeforhiding else 0 for x in li_HT]    
+
+########################################################################################
+########################################################################################
+#allowing for 45mn before and after each batch of food to choose randomly from, that hour is surrorudning the real batch timing
+dico_nbr_liFAKEdate = {}
+#4mn because thats how long it last
+dico_nbr_liFAKEdate[1] = list(pd.date_range(start=dt.datetime(2020,1,1,2,50,0), 
+                                  end=dt.datetime(2020,1,1,3,35,0), 
+                                  freq = 'S'))
+
+dico_nbr_liFAKEdate[2] = list(pd.date_range(start=dt.datetime(2020,1,1,4,55,0)-dt.timedelta(minutes=4), 
+                                  end=dt.datetime(2020,1,1,5,40,0)-dt.timedelta(minutes=4), 
+                                  freq = 'S'))
+dico_nbr_liFAKEdate[2].extend(pd.date_range(start=dt.datetime(2020,1,1,6,20,0), 
+                                  end=dt.datetime(2020,1,1,7,5,0), 
+                                  freq = 'S'))
+                                                  
+dico_nbr_liFAKEdate[3] = list(pd.date_range(start=dt.datetime(2020,1,1,7,55,0)-dt.timedelta(minutes=4), 
+                                  end=dt.datetime(2020,1,1,8,40,0)-dt.timedelta(minutes=4), 
+                                  freq = 'S'))
+dico_nbr_liFAKEdate[3].extend(pd.date_range(start=dt.datetime(2020,1,1,9,20,0), 
+                                  end=dt.datetime(2020,1,1,10,5,0), 
+                                  freq = 'S'))
+                         
+dico_nbr_liFAKEdate[4] = list(pd.date_range(start=dt.datetime(2020,1,1,10,55,0)-dt.timedelta(minutes=4), 
+                                  end=dt.datetime(2020,1,1,11,40,0)-dt.timedelta(minutes=4), 
+                                  freq = 'S'))
+dico_nbr_liFAKEdate[4].extend(pd.date_range(start=dt.datetime(2020,1,1,12,20,0), 
+                                  end=dt.datetime(2020,1,1,13,5,0), 
+                                  freq = 'S'))      
+                         
+dico_nbr_liFAKEdate[5] = list(pd.date_range(start=dt.datetime(2020,1,1,13,10,0)-dt.timedelta(minutes=4), 
+                                  end=dt.datetime(2020,1,1,13,55,0)-dt.timedelta(minutes=4), 
+                                  freq = 'S'))
+dico_nbr_liFAKEdate[5].extend(pd.date_range(start=dt.datetime(2020,1,1,14,35,0), 
+                                  end=dt.datetime(2020,1,1,15,20,0), 
+                                  freq = 'S'))                     
+                         
+dico_nbr_liFAKEdate[6] = list(pd.date_range(start=dt.datetime(2020,1,1,15,10,0)-dt.timedelta(minutes=4), 
+                                  end=dt.datetime(2020,1,1,15,55,0)-dt.timedelta(minutes=4), 
+                                  freq = 'S'))
+   
+########################################################################################
 ########################################################################################
 
 

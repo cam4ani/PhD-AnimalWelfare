@@ -21,6 +21,7 @@ from operator import itemgetter
 import math 
 import gc
 import uuid #generte random id
+import random
 
 #find day of the week
 import calendar
@@ -1979,6 +1980,46 @@ def mid_cum_Z4_sec(li):
 #li = [1,1,4,4,4,1,1,2,2,2,3,3,3,1,4,2,2,2,2,5,5,5,4,4,4]
 #mid_cum_Z4_sec(li) #5
 
+def list_ALL(li):
+    return ([int(i.split('_')[0]) for i in li])
+ 
+def list_Z4(li):
+    return [1 if '4' in str(x) else 0 for x in li]
+#small example
+#li = [1,1,1,1,2,2,2,3,3,3,4,4,2,2,2,2,4,1,2]
+#list_of_Z4(li) #[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0]
+
+def nbr_early_visit_Z4(li):
+    li = list_Z4(li)
+    li_z = [x[0] for x in itertools.groupby(li)]
+    return (sum(li_z))
+#small example
+li = [0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
+nbr_early_visit_Z4(li) #[1, 2, 3, 4, 2, 4, 1, 2]
+
+def nbr_early_visit_Z4_moreXsec(li, mindur_toaccountforZ4):
+    li = list_Z4(li)
+    #dont add 0 in the list in case it starts with 1, eause we actually want to skip the first bouts in Z4 if its where it slept
+    #otherwise intrasically correlated with you sleeping down!
+    #li = [0]+li
+    #print('_'.join([str(i) for i in li]))
+    #print('_'.join([str(i) for i in li]).split('0_1'))
+    #split each time hen visited the nestbox and sum each of those instances adding 1 , but removing first element, as its only 0
+    li_dur = [j.count("1")+1 for j in '_'.join([str(i) for i in li]).split('0_1')[1:]] 
+    return(len([i for i in li_dur if i>=mindur_toaccountforZ4]))
+#small example (now instead of 0-1 it should be 4 vs other (1,2,3,5))
+#li = [1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1] #2
+#print(nbr_early_visit_Z4_moreXsec(li, mindur_toaccountforZ4=2))
+#li = [1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1] #3
+#print(nbr_early_visit_Z4_moreXsec(li, mindur_toaccountforZ4=2)) #[1, 2, 3, 4, 2, 4, 1, 2]
+#li = [0,1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1] #4
+#print(nbr_early_visit_Z4_moreXsec(li, mindur_toaccountforZ4=2)) #[1, 2, 3, 4, 2, 4, 1, 2]
+#li = [0,1, 1, 1, 1] #1
+#print(nbr_early_visit_Z4_moreXsec(li, mindur_toaccountforZ4=2)) #[1, 2, 3, 4, 2, 4, 1, 2]
+#li = [1, 1, 1, 1] #0
+#print(nbr_early_visit_Z4_moreXsec(li, mindur_toaccountforZ4=2)) #[1, 2, 3, 4, 2, 4, 1, 2]
+
+
 ############### missing zones (flying)
 def li_missingZone_mvtPerc_DU(li,nbr_sec):
     li_z_d_pzd = list_tuple_zone_dur_previousZoneDiff(li, nbr_sec)
@@ -3578,7 +3619,7 @@ def HenDailyVariable_Origins_simplest(df, config, name_='', timestamp_name='Time
            nestboxes_related_behavior=pd.NamedAgg(column='Zone', aggfunc=lambda x: nestboxes_related_behavior(li=list(x), config=config)),
            zone_list=pd.NamedAgg(column='Zone', aggfunc=lambda x: tuple(x)),
            list_of_zones=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_of_zones(list(x))), 
-           list_Z4=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_Z4(list(x))),
+           list_ZALL=pd.NamedAgg(column='Zone', aggfunc=lambda x: list_ALL(list(x))),
            mid_cum_Z4_sec=pd.NamedAgg(column='Zone', aggfunc=lambda x: mid_cum_Z4_sec(list(x))),
            Total_number_transition=pd.NamedAgg(column='Zone', aggfunc=lambda x: nbr_transition(list(x))),
            nbr_stays=pd.NamedAgg(column='Zone', aggfunc=lambda x: nbr_bouts_per_zone(list(x))),
