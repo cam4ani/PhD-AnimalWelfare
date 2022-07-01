@@ -93,7 +93,14 @@ dico_pen_ts = {3:'TrackingSystem 3-5',
               'pen9':'TrackingSystem 8-9',
               'pen10':'TrackingSystem 10-12',
               'pen11':'TrackingSystem 10-12',
-              'pen12':'TrackingSystem 10-12'}        
+              'pen12':'TrackingSystem 10-12'}     
+
+#date were animals were killed
+#before rearing start: 02-06-2020 (6 eggs I think) and 04-06-2020 (8 chicks I think)
+li_epi_date = [dt.datetime(2020,6,8), dt.datetime(2020,6,15), dt.datetime(2020,6,25), 
+              dt.datetime(2020,8,13), dt.datetime(2020,9,11), 
+               dt.datetime(2020,10,8), dt.datetime(2020,11,23), dt.datetime(2021,2,1),
+               dt.datetime(2021,4,12), dt.datetime(2021,7,26)]
         
 #Adatability study
 li_binmn = [5,10,15,20,30]
