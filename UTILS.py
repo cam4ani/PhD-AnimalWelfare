@@ -463,23 +463,13 @@ def openDevice(config):
 ################################################# chapter 0 - testing cleaning methods  ##################################################
 ##########################################################################################################################################
 
-def cleaning_processing(date_min, date_max, config, df=pd.DataFrame()):
+def cleaning_processing(date_min, date_max, config, df):
     
     #initialisation
     path_extracted_data = config.path_extracted_data
     id_run = config.id_run
     dico_matching = config.dico_matching
     
-    #open the data: for chapter 0: cleaning
-    if df.shape[0]==0:
-        df = pd.read_csv(os.path.join(path_extracted_data, id_run+'_PreprocessRecords_forcleaning.csv'), sep=';', 
-                         parse_dates=['Timestamp', 'date'], index_col=0) 
-        df['Zone'] = df['Zone'].map(lambda x: dico_matching[x])
-        df['HenID'] = df['HenID'].map(lambda x: 'hen_'+str(x))
-        df['TagID'] = df['TagID'].astype(int).astype(str)    
-        df['TagID'] = df['TagID'].map(lambda x: 'tag_'+str(x))
-        df['PenID'] = df['PenID'].map(lambda x: 'pen'+str(x))
-
     #filter by the dates we want
     print(df.shape)
     df = df[(df['Timestamp']<date_max)&(df['Timestamp']>date_min)]
@@ -2630,7 +2620,7 @@ def TimeSeriesPlot_1row1day(df, config, save=True, timestamp_name='New_Timestamp
 def is_day(x, dico_):
     '''from a timestamp value x, and the dico_night_hour parameter, it will output true if its during the day, false otherwise'''
     if max(dico_.keys())<dt.datetime(x.year,x.month,x.day,0,0,0):
-        print('ERROR: your \"dico_nighthour\" parameter does not include information for the date: %s'%str(x))
+        print('ERROR: your \"dico_night_hour\" parameter does not include information for the date: %s'%str(x))
         sys.exit()
     else:
         #take info (i.e. values) of the dico_night_hour key that represent the smallest date among all the date>=x:
@@ -3320,8 +3310,7 @@ def HenDailyVariable_Origins(df, config, name_='', timestamp_name='Timestamp', s
     print([c for c in df_daily.columns if str(c).startswith('night_level')])
     
     ####################################################################################################################################
-    ######## remove dates of tags when they were not giving deviceupdate regularly or before 13.10.2020 as beforehand we couldnt 
-    #control for it
+    ######## keep dates of tags only when they were  giving deviceupdate regularly or before 13.10.2020 as beforehand we dont have the info
     print('-------------- Lets remove dates of tags when they were not giving deviceupdate correctly')
     #verified date: correct
     df_wt = pd.read_csv(os.path.join(path_extracted_data, id_run+'_df_alldeviceinfo.csv'), parse_dates=['date'], dayfirst=True, sep=';') 
@@ -3755,7 +3744,7 @@ def HenDailyVariable_Origins_simplest(df, config, name_='', timestamp_name='Time
     print_color((('By removing the unwanted days we passed from %d to %d timestamp (losing '%(x0,
                 df_daily.shape[0]),'black'), (x0-df_daily.shape[0],'red'),(' timestamp)','black')))    
 
-    #removing date we change to summer itme
+    #removing date we change to summer time
     df_daily = df_daily[df_daily['level']!=dt.datetime(2021,3,28)]
 
     ######## remove all above the last official tracked day

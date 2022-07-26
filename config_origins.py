@@ -174,7 +174,7 @@ li_FNR = [0 if x in li_when_food_notnotrunning else 1 for x in li_FNR]
 #small visual verification
 #plt.plot(li_FR);
 
-#compute list of 0 (not laying behavior)/1(=laying behavior), with one value per secon
+#compute list of 0 (not laying behavior)/1(=laying behavior), with one value per second
 li_timeforlaying = pd.date_range(start=dt.datetime(2020,1,1,tuple_min_max_egglaying_h[0],0,0), 
                                       end=dt.datetime(2020,1,1,tuple_min_max_egglaying_h[1],0,0), 
                                       freq = 'S')
@@ -182,7 +182,7 @@ li_LT = pd.date_range(start=dt.datetime(2020,1,1,2,0,0), end=dt.datetime(2020,1,
 li_LT = [1 if x in li_timeforlaying else 0 for x in li_LT]
 
 
-#compute list of 0 (not hiding behavior)/1(=hiding behavior), with one value per secon
+#compute list of 0 (not hiding behavior)/1(=hiding behavior), with one value per second
 li_timeforhiding = pd.date_range(start=dt.datetime(2020,1,1,tuple_min_max_egghiding_h[0],0,0), 
                                       end=dt.datetime(2020,1,1,tuple_min_max_egghiding_h[1],0,0), 
                                       freq = 'S')
