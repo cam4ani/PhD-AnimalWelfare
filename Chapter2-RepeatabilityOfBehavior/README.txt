@@ -6,9 +6,13 @@ To run the code, each steps should be done in the below order.
 in each notebook, always look at the section "Define parameters", and replace parameters adequately to your need. Note this section is either the first or second section, depending on if we need to choose subdataframe
 
 ------------------------------ step 0 ------------------------------
-0_select_hens.ipynb: get the data used for the chapter
+Note: step 0 will not be give in the publication supplement
+
+0A_select_hens.ipynb: get the data used for the chapter
 it select hens and days based on all initial data (focal bird info, weather, movement)
 output file: df_BS.csv
+
+0B_Repeatabilities-PenID&Distributions.ipynb: check penID effects and best distributions for each beahviour
 
 ------------------------------ step 1 ------------------------------
 1_Repeatabilities.ipynb: estimate repeatabilities
