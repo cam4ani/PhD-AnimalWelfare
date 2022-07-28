@@ -1,0 +1,60 @@
+
+1_Zone = winter garden
+2_Zone = litter floor
+3_Zone = lower tier
+4_Zone = nestbox tier
+5_Zone = top tier
+
+------------------------------------------------------------------------------
+-----------------------------Available meta-data------------------------------
+------------------------------------------------------------------------------
+HenID: hen identity, no hen has the same identity, it is unique
+TagID: tracking tag id. Note that a same hen can have differnet tags through life
+PenID: pen id
+level: date
+night_level: the night dates (from which date to which date)
+nbr_h_per_day: number of hour considered as day-time (typically 14h, when the light is turned on at 3h and off at 17h) 
+DOA: day of age of the hens
+WOA: week of age of the hens
+nbr_h_WGopen: number of hours the winter garden was open for on that specific days (as it is close manually, there is daily variation)
+weekday: the day of the week (monday, tuesday....)
+TrackingSystemID: id of the tracking system (3-5, 8-9, 10-12)
+day_lighth: the hour when the artificial light was turned on on that day
+Period_type: the period considered with:
+    "early": days after the population, 
+    "R1": 7 days before and 7 days after the first relocation,
+    "R2": 7 days before and 7 days after the second relocation,
+    "R3": 7 days before and 7 days after the third relocation,
+    "late": 7 days before the last health assessment, at which point we remove the tracking tags from the birds
+HenID_Period: HenID + Period as defined previously
+
+------------------------------------------------------------------------------
+-------------Available daily movement and space-use variables are-------------
+------------------------------------------------------------------------------
+Total_number_zone: total number of zone visited. This varies from 1-5 as we have 5 zones.
+Total_number_transition: total number of registered transitions (might not be reliable as short transitions might not be recorded)
+
+vertical_travel_distance: vertical travel distance, where any two consecutives zones rom the aviary are at distance 1
+vertical_travel_distance_perinsideh: vertical travel distance per hour spent inside (to control for birds spenidn more time in the winer garden)
+
+perc_duration_*_Zone: percentage of the day time spent in each zone
+nbr_stays_*_Zone: number of stay in *_Zone over the day
+duration_*_Zone_min: duration spent in *_Zone over the day (in minute)
+
+night_Max_duration_zones: the zone where the hen spent most of its night-time
+Sleeping_Uppest: = 1 if the hen slep on the highest tier (5_Zone), 0 otherwise
+WentinWG: =1 if th ehen entered the winter garden, 0 otherwise
+Has_been_toptier_wholeday: =1 if the hen spent the entier day on the top tier (5_Zone), 0 otherwise
+
+perc_1_Zone_while_WG_open: percentage of time spent in the winter garden while the winter garden was open
+latency_1_Zone_h: latency to enter the winter garden.If bird did not went in WG, the latency = nbr of hours the WG was open for
+
+mid_cum_Z4_h_Morning: the time of the day of the middle morning usage of the nestbox zone tier
+Intervaltime_midcumZ4hmorning_h: the number of hours between mid-nestbox zone usage of revious day and today (from the morning usage only).
+
+
+
+
+
+
+

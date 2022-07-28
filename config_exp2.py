@@ -9,7 +9,7 @@ import pandas as pd
 #8.10.2021: population in barn 4, so we woud use the day after only!
 
 li_initdate = [dt.datetime(2021,10,9), dt.datetime(2021,10,10), dt.datetime(2021,10,11), 
-                   dt.datetime(2021,10,16), dt.datetime(2021,10,17), dt.datetime(2021,10,18)]
+               dt.datetime(2021,10,16), dt.datetime(2021,10,17), dt.datetime(2021,10,18)]
 #health assessment days
 li_HA = [dt.datetime(2021,11,30), dt.datetime(2022,2,8), dt.datetime(2022,4,12), dt.datetime(2022,7,5)]
 #date_range included both given dates
@@ -45,9 +45,6 @@ path_performance = os.path.join(path_,'Productivity')
 path_extracted_data_daily_check = os.path.join(path_extracted_data, 'DailyVerifications') #not linked to the id_run as its more general
 path_extracted_data = os.path.join(path_extracted_data, id_run)
 path_extracted_HA_visual = os.path.join(path_extracted_HA,'visual')
-
-#add other usefulle directories
-path_extracted_data_SNA = os.path.join(path_extracted_data, 'SNA')
 
 #defines the color palette
 #https://matplotlib.org/stable/gallery/color/named_colors.html
