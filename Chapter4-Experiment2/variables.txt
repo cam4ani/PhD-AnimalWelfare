@@ -10,15 +10,15 @@
 ------------------------------------------------------------------------------
 HenID: hen identity, no hen has the same identity, it is unique
 TagID: tracking tag id. Note that a same hen can have differnet tags through life
-PenID: pen id
 level: date
+CorrectPenID: the pen id where the bird is on that specific date (half of the hen changed pens three times during the laying phase)
+TrackingSystemID: tracking system id (3-5, 8-9, or 10-12) associated to the "CorrectPenID"
 night_level: the night dates (from which date to which date)
 nbr_h_per_day: number of hour considered as day-time (typically 14h, when the light is turned on at 3h and off at 17h) 
 DOA: day of age of the hens
 WOA: week of age of the hens
 nbr_h_WGopen: number of hours the winter garden was open for on that specific days (as it is close manually, there is daily variation)
 weekday: the day of the week (monday, tuesday....)
-TrackingSystemID: id of the tracking system (3-5, 8-9, 10-12)
 day_lighth: the hour when the artificial light was turned on on that day
 Period_type: the period considered with:
     "early": days after the population, 
@@ -53,8 +53,6 @@ mid_cum_Z4_h_Morning: the time of the day of the middle morning usage of the nes
 Intervaltime_midcumZ4hmorning_h: the number of hours between mid-nestbox zone usage of revious day and today (from the morning usage only).
 
 
-
-
-
-
+Note (does not apply for this experiment as this is never the case here):
+mid_durationafterlightturnedon_Z4_h_Morning: should be used rather than mid_cum_Z4_h_Morning, if the light was not turned on at a same time always, when turned on before 8h
 

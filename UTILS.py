@@ -114,6 +114,17 @@ sys.path.append('C:\\Users\\camil\\Desktop\\animals_code\\entropy')
 #--> if we want to compute cleaned record for each log only once, then this should still be implemented. Certainly by given as input the path of the logfiles and a fct to put the df in the correct form, and then removing the log that were already cleaned, opening the rest and clean to put in correct form etc
 
 
+
+def starting_h_day(x, dico_):
+    '''from a timestamp value x, and the dico_night_hour parameter, it will output true if its during the day, false otherwise'''
+    if max(dico_.keys())<dt.datetime(x.year,x.month,x.day,0,0,0):
+        print('ERROR: your \"dico_night_hour\" parameter does not include information for the date: %s'%str(x))
+        sys.exit()
+    else:
+        #take info (i.e. values) of the dico_night_hour key that represent the smallest date among all the date>=x:
+        m = min([d for d in dico_.keys() if d>=dt.datetime(x.year,x.month,x.day,0,0,0)])
+        return dico_[m]['start_h']
+    
 ##########################################################################################################################################
 ################################################################ others ##################################################################
 ##########################################################################################################################################
