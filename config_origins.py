@@ -101,6 +101,10 @@ li_epi_date = [dt.datetime(2020,6,8), dt.datetime(2020,6,15), dt.datetime(2020,6
               dt.datetime(2020,8,13), dt.datetime(2020,9,11), 
                dt.datetime(2020,10,8), dt.datetime(2020,11,23), dt.datetime(2021,2,1),
                dt.datetime(2021,4,12), dt.datetime(2021,7,26)]
+#DOA frm python:5,12,22,71,100,127,173,243,313,418
+li_HA_date = [dt.datetime(2020,11,23), dt.datetime(2021,1,4), dt.datetime(2021,2,1),
+               dt.datetime(2021,4,12), dt.datetime(2021,7,26)]
+#173,215,243,313,418
         
 #Adatability study
 li_binmn = [5,10,15,20,30]
