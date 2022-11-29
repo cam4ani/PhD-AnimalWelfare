@@ -49,7 +49,6 @@ path_extracted_data_SNA = os.path.join(path_extracted_data, 'SNA')
 
 #defines the color palette
 #https://matplotlib.org/stable/gallery/color/named_colors.html
-#https://matplotlib.org/3.1.1/tutorials/colors/colors.html
 pal_ = {'Trackingsystem_Zone':'gold','Binning_Zone':'blue', 'Model_Zone':'deepskyblue','ThresholdOnDuration_Zone':'coral',
        'Unprocessed records':'gold','BIN-dataset':'blue', 'ML-dataset':'deepskyblue','TD-dataset':'coral'}
 pal_zone = {'Wintergarden':'green', 'Winter garden':'green', 'Litter':'olive', 'Lower perch':'peru', 
