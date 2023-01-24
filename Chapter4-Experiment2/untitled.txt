@@ -1,0 +1,8 @@
+
+
+
+my model seems to converge only when the observe variable are scaled before fitting, I tried to divied all outut by 100( their mean is
+
+
+
+
