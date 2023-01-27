@@ -9,10 +9,12 @@ library(sjPlot) #tab_model
 ################ download data #################
 ################################################
 #focal birds information (one row per focal bird)
-path_ = 'G:/VPHI/Welfare/2- Research Projects/OFHE2.OriginsE2/DataOutput/TrackingSystem/ALLDATA_'
+path_ = 'YOUR PATH'
 #create a path to save outputs
-path_save = file.path(path_, '0FH_HA')
-dir.create(path_save)
+path_save_HA = file.path(path_, 'HA&Treatment')
+dir.create(path_save_HA)
+path_save_Egg = file.path(path_, 'Egg&Treatment')
+dir.create(path_save_Egg)
 
 #download health assessment from KBF and feather damage
 df = read.csv(file.path(path_,'OFH_df_HA.csv'), header = TRUE, sep = ",")
@@ -28,7 +30,6 @@ df = df %>% mutate(Treatment = relevel(Treatment, ref = "TRAN"))
 dim(df)
 df = df[!is.na(df$DOA),]
 head(df,3)
-
 
 #download body mass data
 df_W = read.csv(file.path(path_,'OFH_df_FOCALBIRDS.csv'), header = TRUE, sep = ",")
@@ -47,9 +48,6 @@ hist(df_W$weight)
 hist(df_W$weight_norm)
 
 #download egg-production data
-path_ = 'G:/VPHI/Welfare/2- Research Projects/OFHE2.OriginsE2/DataOutput/TrackingSystem/ALLDATA_'
-path_visual = file.path(path_, 'OFH_performance')
-dir.create(path_visual)
 df_egg = read.csv(file.path(path_,'df_eggdata.csv'), header = TRUE, sep = ",")
 df_egg$PenID = factor(df_egg$PenID)
 df_egg$DIB = as.integer(df_egg$DIB)
@@ -62,6 +60,7 @@ summary(df)
 head(df,3)
 #choosing first two month in the laying barn
 df_egg = df_egg[(df_egg$DIB<=60)&(df_egg$DIB>=1),]
+
 
 ################################################
 ################# KBF severity #################
@@ -76,7 +75,7 @@ hist(sqrt(df_S$severity))
 fit_s = lmer(sqrt(severity) ~  CLASS + date*Treatment + (1|HenID), data=df_S)
 summary(fit_s)
 anova(fit_s)
-write.csv(anova(fit_s), file=file.path(path_save, paste0('OFH_KBF_anova.csv')) )
+write.csv(anova(fit_s), file=file.path(path_save_HA, paste0('OFH_KBF_anova.csv')) )
 ######normally distributed residuals
 qqnorm(resid(fit_s))
 qqline(resid(fit_s))
@@ -88,9 +87,9 @@ plot(fit_s)
 fit_s.rg = ref_grid(fit_s)
 emm = emmeans(regrid(fit_s.rg), specs =~ Treatment | date)
 df_res = summary(pairs(emm), by = NULL, adjust = "bonf")
-write.csv(df_res, file=file.path(path_save, paste0('OFH_KBF_posthoc.csv')) )
+write.csv(df_res, file=file.path(path_save_HA, paste0('OFH_KBF_posthoc.csv')) )
 df_res = confint(emm)
-write.csv(df_res, file=file.path(path_save, paste0('OFH_KBF_posthocmeans.csv')) )
+write.csv(df_res, file=file.path(path_save_HA, paste0('OFH_KBF_posthocmeans.csv')) )
 
 
 ################################################
@@ -106,7 +105,7 @@ hist(sqrt(df_F$FeatherDamage))
 fit_f = lmer(FeatherDamage ~  CLASS + date*Treatment + (1|PenID/HenID), data=df_F)
 summary(fit_f)
 anova(fit_f)
-write.csv(anova(fit_f), file=file.path(path_save, paste0('OFH_FD_anova.csv')) )
+write.csv(anova(fit_f), file=file.path(path_save_HA, paste0('OFH_FD_anova.csv')) )
 ######normally distributed residuals
 qqnorm(resid(fit_f))
 qqline(resid(fit_f))
@@ -122,7 +121,7 @@ plot(fit_f)
 fit_w = lmer(weight_norm ~ CLASS + date*Treatment + (1|HenID), data=df_W)
 summary(fit_w)
 anova(fit_w)
-write.csv(anova(fit_w), file=file.path(path_save, paste0('OFH_Weight_anova.csv')) )
+write.csv(anova(fit_w), file=file.path(path_save_HA, paste0('OFH_Weight_anova.csv')) )
 ######normally distributed residuals
 qqnorm(resid(fit_w))
 qqline(resid(fit_w))
@@ -131,7 +130,7 @@ hist(resid(fit_w))
 plot(fit_w)
 
 #save all models 
-tab_model(c(fit_s, fit_f,fit_w), collapse.ci = TRUE, p.style = "numeric_stars", file=file.path(path_save,'Models_HA.doc'))
+tab_model(c(fit_s, fit_f,fit_w), collapse.ci = TRUE, p.style = "numeric_stars", file=file.path(path_save_HA,'Models_HA.doc'))
 
 
 
@@ -139,7 +138,7 @@ tab_model(c(fit_s, fit_f,fit_w), collapse.ci = TRUE, p.style = "numeric_stars", 
 ############# Egg sigmoid curve ###############
 ###############################################
 li = list()
-tiff(file.path(path_visual, 'egg_growth_crv.tiff'), width=400, height=400)
+tiff(file.path(path_save_Egg, 'egg_growth_crv.tiff'), width=400, height=400)
 df_OFH = df_egg[(df_egg$Treatment_allpens=='OFH'),]
 df_TRAN = df_egg[(df_egg$Treatment_allpens=='TRAN'),]
 plot(df_OFH$DIB, df_OFH$X.eggPerTier, col=rgb(red = 0, green = 0, blue = 1, alpha = 0.1))
@@ -169,6 +168,6 @@ for (penid in unique(df$PenID)){
 
 dev.off()
 df_res = rbind(li[[1]],li[[2]],li[[3]],li[[4]],li[[5]],li[[6]],li[[7]],li[[8]],li[[9]],li[[10]])
-write.csv(df_res, file.path(path_visual,'egg_growthcurve.csv')) 
+write.csv(df_res, file.path(path_save_Egg,'egg_growthcurve.csv')) 
 df_res
 
