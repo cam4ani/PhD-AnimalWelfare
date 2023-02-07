@@ -94,7 +94,7 @@ dico_pen_ts = {3:'TrackingSystem 3-5',
 starting_date = dt.datetime(2021,10,8)
 
 #day of birth to compute day of age
-birth_date = dt.datetime(2021,6,9) #DOA 1 = 2020-6-4
+birth_date = dt.datetime(2021,6,9) #DOA 1 = 2021-6-10
 
 #nestbox time:
 #Nestbox Time 16:00 close / 02:05 open. 
