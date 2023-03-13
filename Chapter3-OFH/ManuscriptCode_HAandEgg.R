@@ -33,6 +33,7 @@ head(df,3)
 
 #download body mass data
 df_W = read.csv(file.path(path_,'OFH_df_FOCALBIRDS.csv'), header = TRUE, sep = ",")
+df_W = df_W[!is.na(df_W$DOA),]
 df_W$HenID = as.factor(df_W$HenID)   
 df_W$PenID = as.factor(df_W$PenID)
 df_W$CLASS = as.factor(df_W$CLASS) 
@@ -42,7 +43,6 @@ df_W$Treatment = as.factor(df_W$Treatment)
 df_W = df_W %>% mutate(CLASS = relevel(CLASS, ref = "REXP"))
 df_W = df_W %>% mutate(Treatment = relevel(Treatment, ref = "TRAN"))
 dim(df_W)
-df_W = df_W[!is.na(df_W$DOA),]
 head(df_W,3)
 hist(df_W$weight)
 hist(df_W$weight_norm)
@@ -67,12 +67,13 @@ df_egg = df_egg[(df_egg$DIB<=60)&(df_egg$DIB>=1),]
 ################################################
 dim(df)
 df_S = df[(!is.na(df$severity))&(df$DOA>200),]
+df_S$date = factor(df_S$date) 
 dim(df_S)
 hist(df_S$severity)
 hist(sqrt(df_S$severity))
 
 #penID as random effect: singular values --> without PenID
-fit_s = lmer(sqrt(severity) ~  CLASS + date*Treatment + (1|HenID), data=df_S)
+fit_s = lmer(sqrt(severity) ~  CLASS + date+Treatment+date:Treatment + (1|HenID), data=df_S)
 summary(fit_s)
 anova(fit_s)
 write.csv(anova(fit_s), file=file.path(path_save_HA, paste0('OFH_KBF_anova.csv')) )
@@ -83,13 +84,9 @@ hist(resid(fit_s))
 ######check homogeneity of variance (residuals has constant variance)
 plot(fit_s)
 
-############ Post-hoc analysis
-fit_s.rg = ref_grid(fit_s)
-emm = emmeans(regrid(fit_s.rg), specs =~ Treatment | date)
-df_res = summary(pairs(emm), by = NULL, adjust = "bonf")
-write.csv(df_res, file=file.path(path_save_HA, paste0('OFH_KBF_posthoc.csv')) )
-df_res = confint(emm)
-write.csv(df_res, file=file.path(path_save_HA, paste0('OFH_KBF_posthocmeans.csv')) )
+#compare with and without interaction to assess significance of the predictor
+fit_s0 = lmer(sqrt(severity) ~  CLASS + date+Treatment + (1|HenID), data=df_S)
+anova(fit_s, fit_s0)
 
 
 ################################################
@@ -97,12 +94,13 @@ write.csv(df_res, file=file.path(path_save_HA, paste0('OFH_KBF_posthocmeans.csv'
 ################################################
 dim(df)
 df_F = df[(!is.na(df$FeatherDamage))&(df$DOA>230),]
+df_F$date = factor(df_F$date) 
 dim(df_F)
 hist(df_F$FeatherDamage)
 hist(sqrt(df_F$FeatherDamage))
 
 #penID as random effect: singular values -->withouPenID
-fit_f = lmer(FeatherDamage ~  CLASS + date*Treatment + (1|PenID/HenID), data=df_F)
+fit_f = lmer(FeatherDamage ~  CLASS + date+Treatment+date:Treatment + (1|PenID/HenID), data=df_F)
 summary(fit_f)
 anova(fit_f)
 write.csv(anova(fit_f), file=file.path(path_save_HA, paste0('OFH_FD_anova.csv')) )
@@ -113,12 +111,15 @@ hist(resid(fit_f))
 ######check homogeneity of variance (residuals has constant variance)
 plot(fit_f)
 
+#compare with and without interaction to assess significance of the predictor
+fit_f0 = lmer(FeatherDamage ~  CLASS + date+Treatment + (1|PenID/HenID), data=df_F)
+anova(fit_f, fit_f0)
 
 ###############################################
 ################## Body mass ##################
 ###############################################
 #penID as random effect: singular values -->withouPenID
-fit_w = lmer(weight_norm ~ CLASS + date*Treatment + (1|HenID), data=df_W)
+fit_w = lmer(weight_norm ~ CLASS + date+Treatment+date:Treatment + (1|HenID), data=df_W)
 summary(fit_w)
 anova(fit_w)
 write.csv(anova(fit_w), file=file.path(path_save_HA, paste0('OFH_Weight_anova.csv')) )
@@ -129,9 +130,9 @@ hist(resid(fit_w))
 ######check homogeneity of variance (residuals has constant variance)
 plot(fit_w)
 
-#save all models 
-tab_model(c(fit_s, fit_f,fit_w), collapse.ci = TRUE, p.style = "numeric_stars", file=file.path(path_save_HA,'Models_HA.doc'))
-
+#compare with and without interaction to assess significance of the predictor
+fit_w0 = lmer(weight_norm ~ CLASS + date+Treatment + (1|HenID), data=df_W)
+anova(fit_w, fit_w0)
 
 
 ###############################################
