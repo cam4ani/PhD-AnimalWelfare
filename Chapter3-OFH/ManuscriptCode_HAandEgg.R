@@ -69,14 +69,11 @@ dim(df)
 df_S = df[(!is.na(df$severity))&(df$DOA>200),]
 df_S$date = factor(df_S$date) 
 dim(df_S)
-hist(df_S$severity)
-hist(sqrt(df_S$severity))
 
-#penID as random effect: singular values --> without PenID
-fit_s = lmer(sqrt(severity) ~  CLASS + date+Treatment+date:Treatment + (1|HenID), data=df_S)
+#penID as random effect: singular values & explainen none of the variance --> without PenID
+fit_s = lmer(severity ~  CLASS + date+Treatment+date:Treatment + (1|HenID), data=df_S)
 summary(fit_s)
 anova(fit_s)
-write.csv(anova(fit_s), file=file.path(path_save_HA, paste0('OFH_KBF_anova.csv')) )
 ######normally distributed residuals
 qqnorm(resid(fit_s))
 qqline(resid(fit_s))
@@ -85,9 +82,9 @@ hist(resid(fit_s))
 plot(fit_s)
 
 #compare with and without interaction to assess significance of the predictor
-fit_s0 = lmer(sqrt(severity) ~  CLASS + date+Treatment + (1|HenID), data=df_S)
+fit_s0 = lmer(severity ~  CLASS + date+Treatment + (1|HenID), data=df_S)
 anova(fit_s, fit_s0)
-
+anova(fit_s0)
 
 ################################################
 ################ Feather damage ################
@@ -96,8 +93,6 @@ dim(df)
 df_F = df[(!is.na(df$FeatherDamage))&(df$DOA>230),]
 df_F$date = factor(df_F$date) 
 dim(df_F)
-hist(df_F$FeatherDamage)
-hist(sqrt(df_F$FeatherDamage))
 
 #penID as random effect: singular values -->withouPenID
 fit_f = lmer(FeatherDamage ~  CLASS + date+Treatment+date:Treatment + (1|PenID/HenID), data=df_F)

@@ -1929,6 +1929,9 @@ def food_related_behavior(li_Z, config, fake_sec):
 #li_FR = [0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0]
 #print(food_related_behavior(li_FR=li_FR, li_Z=li_ZS, config=config))0.65 0.85 --> 0.7647058823529412
 
+
+
+
 ############################ nestboxes related behavior
 def nestboxes_related_behavior(li, config, li_LT=[], li_HT=[]):
     '''function that compute a proxi for nestbox zone usgae: morning vs afternoon. values> means that you have an afternoon 
